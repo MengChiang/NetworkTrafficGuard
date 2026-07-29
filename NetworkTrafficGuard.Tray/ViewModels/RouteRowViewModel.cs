@@ -6,18 +6,23 @@ namespace NetworkTrafficGuard.Tray.ViewModels;
 
 public sealed partial class RouteRowViewModel(
     DefaultRouteInfo route,
-    bool isBestRoute,
+    int priority,
     bool isMonitored,
     NetworkGuardSettings settings)
     : ObservableObject
 {
+    public DefaultRouteInfo Route { get; } = route;
+
+    public string RouteKey { get; } = $"{route.InterfaceIndex}|{route.NextHop}";
+
     public int InterfaceIndex { get; } = route.InterfaceIndex;
 
     public string InterfaceAlias { get; } = route.InterfaceAlias;
 
     public string RawGateway { get; } = route.NextHop;
 
-    public string Role { get; } = isBestRoute ? "主回線" : "";
+    [ObservableProperty]
+    private int _priority = priority;
 
     public string NetworkName { get; } = FormatNetworkName(route, settings);
 

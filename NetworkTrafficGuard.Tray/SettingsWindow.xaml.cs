@@ -21,12 +21,15 @@ public partial class SettingsWindow : Window
                 .GroupBy(route => $"{route.InterfaceIndex}|{route.RawGateway}")
                 .Select(group => new NetworkNameMappingRowViewModel(group.First())));
         EnableAdapterChanges = _settings.EnableAdapterChanges;
+        EnableRouteChanges = _settings.EnableRouteChanges;
         DataContext = this;
     }
 
     public ObservableCollection<NetworkNameMappingRowViewModel> Rows { get; }
 
     public bool EnableAdapterChanges { get; set; }
+
+    public bool EnableRouteChanges { get; set; }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
@@ -57,6 +60,7 @@ public partial class SettingsWindow : Window
         }
 
         _settings.EnableAdapterChanges = EnableAdapterChanges;
+        _settings.EnableRouteChanges = EnableRouteChanges;
 
         TraySettingsLoader.Save(_settings);
         DialogResult = true;

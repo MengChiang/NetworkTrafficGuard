@@ -23,6 +23,10 @@ public sealed class NetworkGuardSettings
 
     public Dictionary<string, string> GatewayDisplayNames { get; set; } = [];
 
+    public Dictionary<string, int> RoutePriorities { get; set; } = [];
+
+    public List<string> MonitoredRouteKeys { get; set; } = [];
+
     public GuardMode Mode { get; set; } = GuardMode.WarnOnly;
 
     public bool EnableRouteChanges { get; set; }

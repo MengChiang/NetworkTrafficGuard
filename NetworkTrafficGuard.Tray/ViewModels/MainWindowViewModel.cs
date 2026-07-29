@@ -46,7 +46,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _bestRouteText = "Not checked yet";
 
     [ObservableProperty]
-    private string _routeControlText = "Dry-run route control is idle.";
+    private string _routeControlText = "優先度調整待機中。";
 
     [ObservableProperty]
     private string _wifiStatusText = "未確認";
@@ -120,6 +120,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         INetworkPolicyEngine policyEngine)
     {
         Settings = settings;
+        _monitoredRouteKeys.UnionWith(settings.MonitoredRouteKeys);
         _routeReader = routeReader;
         _routeController = routeController;
         _adapterController = adapterController;
@@ -131,8 +132,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SetWifiEnabledCommand = new AsyncRelayCommand<bool?>(SetWifiEnabledAsync, _ => !IsBusy);
         EnableWifiCommand = new AsyncRelayCommand(() => SetWifiEnabledAsync(enabled: true), () => !IsBusy);
         DisableWifiCommand = new AsyncRelayCommand(() => SetWifiEnabledAsync(enabled: false), () => !IsBusy);
-        MoveRouteUpCommand = new RelayCommand(MoveSelectedRouteUp, () => SelectedRoute is not null);
-        MoveRouteDownCommand = new RelayCommand(MoveSelectedRouteDown, () => SelectedRoute is not null);
+        MoveRouteUpCommand = new AsyncRelayCommand(MoveSelectedRouteUpAsync, () => SelectedRoute is not null && !IsBusy);
+        MoveRouteDownCommand = new AsyncRelayCommand(MoveSelectedRouteDownAsync, () => SelectedRoute is not null && !IsBusy);
         MonitorRouteCommand = new RelayCommand<RouteRowViewModel>(MonitorRoute);
         LoadEditableSettings();
         UpdateAdapterControlStatus();
@@ -154,9 +155,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public IAsyncRelayCommand DisableWifiCommand { get; }
 
-    public IRelayCommand MoveRouteUpCommand { get; }
+    public IAsyncRelayCommand MoveRouteUpCommand { get; }
 
-    public IRelayCommand MoveRouteDownCommand { get; }
+    public IAsyncRelayCommand MoveRouteDownCommand { get; }
 
     public IRelayCommand<RouteRowViewModel> MonitorRouteCommand { get; }
 
@@ -182,6 +183,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SetWifiEnabledCommand.NotifyCanExecuteChanged();
         EnableWifiCommand.NotifyCanExecuteChanged();
         DisableWifiCommand.NotifyCanExecuteChanged();
+        MoveRouteUpCommand.NotifyCanExecuteChanged();
+        MoveRouteDownCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedRouteChanged(RouteRowViewModel? value)
@@ -197,13 +200,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsBusy = true;
         StatusText = "Checking";
         StatusDetail = "Reading Windows default routes...";
-        RouteControlText = "Dry-run route control is idle.";
 
         try
         {
             var defaultRoutes = await _routeReader.GetDefaultRoutesAsync(CancellationToken.None);
-            var orderedRoutes = DefaultRouteSelector.GetDefaultRoutes(defaultRoutes);
-            var bestRoute = orderedRoutes.FirstOrDefault();
+            var metricOrderedRoutes = DefaultRouteSelector.GetDefaultRoutes(defaultRoutes);
+            var orderedRoutes = ApplySavedRoutePriorities(metricOrderedRoutes);
+            var bestRoute = metricOrderedRoutes.FirstOrDefault();
             var policyResult = _policyEngine.Evaluate(defaultRoutes, Settings);
 
             var previousSelectedKey = SelectedRoute is null
@@ -220,18 +223,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
 
             Routes = new ObservableCollection<RouteRowViewModel>(
-                orderedRoutes.Select(route =>
+                orderedRoutes.Select((route, index) =>
                 {
                     var routeKey = CreateRouteKey(route.InterfaceIndex, route.NextHop);
                     return new RouteRowViewModel(
                         route,
-                        route == bestRoute,
+                        index + 1,
                         previousMonitoredKeys.Contains(routeKey),
                         Settings);
                 }));
 
             SelectedRoute = RestoreSelection(previousSelectedKey)
-                ?? Routes.FirstOrDefault(route => route.Role == "主回線")
+                ?? RestoreSelection(bestRouteKey)
                 ?? Routes.FirstOrDefault();
 
             BestRouteText = bestRoute is null
@@ -282,6 +285,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             SimDisplayName = source.SimDisplayName,
             SimCarrierName = source.SimCarrierName,
             GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
+            RoutePriorities = new Dictionary<string, int>(source.RoutePriorities, StringComparer.OrdinalIgnoreCase),
+            MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
             Mode = source.Mode,
             EnableRouteChanges = false,
             EnableAdapterChanges = false,
@@ -391,17 +396,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
         return SetWifiEnabledAsync(enabled ?? false);
     }
 
-    private void MoveSelectedRouteUp()
+    private IReadOnlyList<DefaultRouteInfo> ApplySavedRoutePriorities(IReadOnlyList<DefaultRouteInfo> routes)
     {
-        MoveSelectedRoute(offset: -1);
+        if (Settings.RoutePriorities.Count == 0)
+        {
+            return routes;
+        }
+
+        return routes
+            .Select((route, index) => new
+            {
+                Route = route,
+                DefaultIndex = index,
+                Priority = Settings.RoutePriorities.TryGetValue(CreateRouteKey(route.InterfaceIndex, route.NextHop), out var priority)
+                    ? priority
+                    : int.MaxValue
+            })
+            .OrderBy(item => item.Priority)
+            .ThenBy(item => item.DefaultIndex)
+            .Select(item => item.Route)
+            .ToList();
     }
 
-    private void MoveSelectedRouteDown()
+    private Task MoveSelectedRouteUpAsync()
     {
-        MoveSelectedRoute(offset: 1);
+        return MoveSelectedRouteAsync(offset: -1);
     }
 
-    private void MoveSelectedRoute(int offset)
+    private Task MoveSelectedRouteDownAsync()
+    {
+        return MoveSelectedRouteAsync(offset: 1);
+    }
+
+    private async Task MoveSelectedRouteAsync(int offset)
     {
         if (SelectedRoute is null)
         {
@@ -417,7 +444,67 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         Routes.Move(currentIndex, newIndex);
-        RouteControlText = "Dry-run priority preview updated. Windows metrics were not changed.";
+        RenumberRoutes();
+        SaveRoutePreferences();
+        SyncTrafficMonitors();
+        await ApplyRoutePrioritiesAsync();
+    }
+
+    private void RenumberRoutes()
+    {
+        for (var index = 0; index < Routes.Count; index++)
+        {
+            Routes[index].Priority = index + 1;
+        }
+    }
+
+    private void SaveRoutePreferences()
+    {
+        Settings.RoutePriorities = Routes
+            .Select((route, index) => new { route.RouteKey, Priority = index + 1 })
+            .ToDictionary(
+                item => item.RouteKey,
+                item => item.Priority,
+                StringComparer.OrdinalIgnoreCase);
+
+        var monitoredRouteKeys = Routes
+            .Where(route => route.IsMonitored)
+            .Select(route => route.RouteKey)
+            .ToList();
+
+        Settings.MonitoredRouteKeys = monitoredRouteKeys;
+        _monitoredRouteKeys.Clear();
+        _monitoredRouteKeys.UnionWith(monitoredRouteKeys);
+        TraySettingsLoader.Save(Settings);
+    }
+
+    private async Task ApplyRoutePrioritiesAsync()
+    {
+        IsBusy = true;
+
+        try
+        {
+            var result = await _routeController.ApplyDefaultRoutePrioritiesAsync(
+                Routes.Select(route => route.Route).ToList(),
+                Settings,
+                CancellationToken.None);
+
+            RouteControlText = result.Message;
+
+            if (!result.IsDryRun && result.ChangedRouteCount > 0)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                await RunCheckAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            RouteControlText = $"優先度已紀錄，但 Windows route 套用失敗：{exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private void MonitorRoute(RouteRowViewModel? route)
@@ -438,6 +525,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _monitoredRouteKeys.Remove(routeKey);
         }
 
+        SaveRoutePreferences();
         SelectedRoute = route;
         SyncTrafficMonitors();
     }
@@ -641,7 +729,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_monitoredRouteKeys.Count == 0 && _bestInterfaceIndex is { } bestInterfaceIndex)
         {
-            var bestRoute = Routes.FirstOrDefault(route => route.InterfaceIndex == bestInterfaceIndex && route.Role == "主回線");
+            var bestRoute = Routes.FirstOrDefault(route => route.InterfaceIndex == bestInterfaceIndex);
 
             if (bestRoute is not null)
             {

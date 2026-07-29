@@ -48,10 +48,13 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <CheckBox Grid.Column="0"
-                      IsChecked="{Binding EnableAdapterChanges, Mode=TwoWay}"
-                      VerticalAlignment="Center"
-                      Content="允許實際開啟/關閉 Wi-Fi（會跳出系統管理員權限確認）" />
+            <StackPanel Grid.Column="0">
+                <CheckBox IsChecked="{Binding EnableAdapterChanges, Mode=TwoWay}"
+                          Content="允許實際開啟/關閉 Wi-Fi（會跳出系統管理員權限確認）" />
+                <CheckBox IsChecked="{Binding EnableRouteChanges, Mode=TwoWay}"
+                          Margin="0,8,0,0"
+                          Content="允許實際變更路由優先度（會跳出系統管理員權限確認）" />
+            </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="取消" MinWidth="90" Height="32" Margin="0,0,8,0" Click="CancelButton_Click" />

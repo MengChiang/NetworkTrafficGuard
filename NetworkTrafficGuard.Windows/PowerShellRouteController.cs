@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using NetworkTrafficGuard.Core.Models;
@@ -62,6 +63,74 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
             ChangedRouteCount: changedRouteCount,
             MatchedRoutes: matchedRoutes,
             Message: $"Removed {changedRouteCount} SIM default route(s).");
+    }
+
+    public async Task<RouteControlResult> ApplyDefaultRoutePrioritiesAsync(
+        IReadOnlyList<DefaultRouteInfo> defaultRoutesInPriorityOrder,
+        NetworkGuardSettings settings,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(defaultRoutesInPriorityOrder);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var defaultRoutes = defaultRoutesInPriorityOrder
+            .Where(route => DefaultRouteSelector.IsDefaultRoute(route.DestinationPrefix))
+            .ToList();
+
+        if (defaultRoutes.Count == 0)
+        {
+            return new RouteControlResult(
+                IsDryRun: !settings.EnableRouteChanges,
+                MatchedRouteCount: 0,
+                ChangedRouteCount: 0,
+                MatchedRoutes: defaultRoutes,
+                Message: "No default routes matched.");
+        }
+
+        if (!settings.EnableRouteChanges)
+        {
+            logger.LogWarning(
+                "Dry-run: would apply default route priorities: {Routes}",
+                DescribeRoutes(defaultRoutes));
+
+            return new RouteControlResult(
+                IsDryRun: true,
+                MatchedRouteCount: defaultRoutes.Count,
+                ChangedRouteCount: 0,
+                MatchedRoutes: defaultRoutes,
+                Message: "已紀錄優先順序。Dry-run：Windows route metric 未變更。");
+        }
+
+        using var process = CreateApplyPrioritiesProcess(defaultRoutes);
+
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
+        {
+            return new RouteControlResult(
+                IsDryRun: false,
+                MatchedRouteCount: defaultRoutes.Count,
+                ChangedRouteCount: 0,
+                MatchedRoutes: defaultRoutes,
+                Message: "已紀錄優先順序，但 Windows 權限確認已取消。");
+        }
+
+        await WaitForExitWithTimeoutAsync(process, cancellationToken);
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"PowerShell route priority update failed with exit code {process.ExitCode}.");
+        }
+
+        return new RouteControlResult(
+            IsDryRun: false,
+            MatchedRouteCount: defaultRoutes.Count,
+            ChangedRouteCount: defaultRoutes.Count,
+            MatchedRoutes: defaultRoutes,
+            Message: $"已紀錄並要求 Windows 套用 {defaultRoutes.Count} 條 route 優先度。");
     }
 
     private static bool IsSimRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
@@ -143,10 +212,45 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
         };
     }
 
+    private static Process CreateApplyPrioritiesProcess(IReadOnlyList<DefaultRouteInfo> routes)
+    {
+        var scriptBuilder = new StringBuilder();
+        scriptBuilder.AppendLine("$ErrorActionPreference = 'Stop'");
+        scriptBuilder.AppendLine("[Console]::OutputEncoding = [System.Text.Encoding]::UTF8");
+
+        for (var index = 0; index < routes.Count; index++)
+        {
+            var routeMetric = (index + 1) * 10;
+            var route = routes[index];
+
+            scriptBuilder.AppendLine(
+                $"Get-NetRoute -DestinationPrefix '{EscapePowerShell(route.DestinationPrefix)}' -InterfaceIndex {route.InterfaceIndex} |");
+            scriptBuilder.AppendLine(
+                $"    Where-Object {{ $_.NextHop -eq '{EscapePowerShell(route.NextHop)}' }} |");
+            scriptBuilder.AppendLine(
+                $"    Set-NetRoute -RouteMetric {routeMetric} -Confirm:$false");
+        }
+
+        var encodedCommand = Convert.ToBase64String(Encoding.Unicode.GetBytes(scriptBuilder.ToString()));
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encodedCommand}",
+            UseShellExecute = true,
+            Verb = "runas",
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+
+        return new Process
+        {
+            StartInfo = startInfo
+        };
+    }
+
     private static async Task WaitForExitWithTimeoutAsync(Process process, CancellationToken cancellationToken)
     {
         using var timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutTokenSource.CancelAfter(TimeSpan.FromSeconds(10));
+        timeoutTokenSource.CancelAfter(TimeSpan.FromSeconds(60));
 
         try
         {
