@@ -214,6 +214,17 @@
                                   GridLinesVisibility="Horizontal"
                                   RowHeaderWidth="0">
                             <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="波型" Width="58">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsMonitored, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Command="{Binding DataContext.MonitorRouteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                      CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="優先" Binding="{Binding Role}" Width="76" />
                                 <DataGridTextColumn Header="網路" Binding="{Binding NetworkName}" Width="190" />
                                 <DataGridTextColumn Header="Gateway" Binding="{Binding Gateway}" Width="260" />
@@ -228,7 +239,7 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <iconPacks:PackIconLucide Kind="Activity" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
-                            <TextBlock Text="選取網路" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="波型監看" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
                         <TextBlock Text="{Binding SelectedNetworkTitle}" FontSize="20" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding SelectedNetworkDetail}" Style="{StaticResource MutedText}" Margin="0,4,0,12" />

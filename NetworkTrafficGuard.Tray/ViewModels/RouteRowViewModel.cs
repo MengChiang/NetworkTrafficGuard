@@ -1,12 +1,15 @@
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Settings;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NetworkTrafficGuard.Tray.ViewModels;
 
-public sealed class RouteRowViewModel(
+public sealed partial class RouteRowViewModel(
     DefaultRouteInfo route,
     bool isBestRoute,
+    bool isMonitored,
     NetworkGuardSettings settings)
+    : ObservableObject
 {
     public int InterfaceIndex { get; } = route.InterfaceIndex;
 
@@ -23,6 +26,9 @@ public sealed class RouteRowViewModel(
     public string Interface { get; } = $"{route.InterfaceAlias} #{route.InterfaceIndex}";
 
     public string AddressFamily { get; } = route.DestinationPrefix == "::/0" ? "IPv6" : "IPv4";
+
+    [ObservableProperty]
+    private bool _isMonitored = isMonitored;
 
     private static string FormatNextHop(string nextHop, NetworkGuardSettings settings)
     {

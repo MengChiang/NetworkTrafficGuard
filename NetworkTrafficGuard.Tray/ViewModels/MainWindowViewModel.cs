@@ -29,6 +29,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private long? _lastBytesSent;
     private DateTimeOffset? _lastTrafficSampleAt;
     private string? _selectedRouteKey;
+    private string? _monitoredRouteKey;
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -135,6 +136,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         DisableWifiCommand = new AsyncRelayCommand(() => SetWifiEnabledAsync(enabled: false), () => !IsBusy);
         MoveRouteUpCommand = new RelayCommand(MoveSelectedRouteUp, () => SelectedRoute is not null);
         MoveRouteDownCommand = new RelayCommand(MoveSelectedRouteDown, () => SelectedRoute is not null);
+        MonitorRouteCommand = new RelayCommand<RouteRowViewModel>(MonitorRoute);
         LoadEditableSettings();
         StartAutoRefresh();
         StartTrafficTimer();
@@ -155,6 +157,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IRelayCommand MoveRouteUpCommand { get; }
 
     public IRelayCommand MoveRouteDownCommand { get; }
+
+    public IRelayCommand<RouteRowViewModel> MonitorRouteCommand { get; }
 
     public string SettingsSummary =>
         $"Wi-Fi {Settings.PrimaryWifiDisplayName} ({Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}) | " +
@@ -186,7 +190,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveRouteDownCommand.NotifyCanExecuteChanged();
         SaveSelectedNetworkNameCommand.NotifyCanExecuteChanged();
         UpdateSelectedRouteDetails(value);
-        SetTrafficMonitor(value?.InterfaceIndex ?? _bestInterfaceIndex);
     }
 
     private async Task RunCheckAsync()
@@ -206,9 +209,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var previousSelectedKey = SelectedRoute is null
                 ? null
                 : CreateRouteKey(SelectedRoute.InterfaceIndex, SelectedRoute.RawGateway);
+            var previousMonitoredKey = _monitoredRouteKey;
+            var bestRouteKey = bestRoute is null
+                ? null
+                : CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.NextHop);
+            var monitoredRouteKey = previousMonitoredKey ?? bestRouteKey;
 
             Routes = new ObservableCollection<RouteRowViewModel>(
-                orderedRoutes.Select(route => new RouteRowViewModel(route, route == bestRoute, Settings)));
+                orderedRoutes.Select(route =>
+                {
+                    var routeKey = CreateRouteKey(route.InterfaceIndex, route.NextHop);
+                    return new RouteRowViewModel(
+                        route,
+                        route == bestRoute,
+                        routeKey == monitoredRouteKey,
+                        Settings);
+                }));
 
             SelectedRoute = RestoreSelection(previousSelectedKey)
                 ?? Routes.FirstOrDefault(route => route.Role == "主回線")
@@ -220,7 +236,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             UpdatePhoneSummary(orderedRoutes, bestRoute);
             _bestInterfaceIndex = bestRoute?.InterfaceIndex;
-            SetTrafficMonitor(SelectedRoute?.InterfaceIndex ?? _bestInterfaceIndex);
+            var monitoredRoute = Routes.FirstOrDefault(route => route.IsMonitored)
+                ?? SelectedRoute
+                ?? Routes.FirstOrDefault();
+            MonitorRoute(monitoredRoute);
 
             StatusText = policyResult.RiskLevel.ToString();
             StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSim={policyResult.ShouldBlockSimRoute}";
@@ -390,6 +409,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         Routes.Move(currentIndex, newIndex);
         RouteControlText = "Dry-run priority preview updated. Windows metrics were not changed.";
+    }
+
+    private void MonitorRoute(RouteRowViewModel? route)
+    {
+        if (route is null)
+        {
+            SetTrafficMonitor(_bestInterfaceIndex);
+            return;
+        }
+
+        foreach (var candidate in Routes)
+        {
+            candidate.IsMonitored = ReferenceEquals(candidate, route);
+        }
+
+        SelectedRoute = route;
+        _monitoredRouteKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
+        SetTrafficMonitor(route.InterfaceIndex);
     }
 
     private void LoadEditableSettings()
