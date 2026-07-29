@@ -10,7 +10,7 @@
     </linearGradient>
   </defs>
 
-  <rect width="256" height="256" rx="56" fill="#0F172A"/>
+  <rect width="256" height="256" rx="56" fill="none"/>
   <path
     d="M128 24 204 54v64c0 51-31 94-76 114-45-20-76-63-76-114V54l76-30Z"
     fill="url(#shield)"/>
