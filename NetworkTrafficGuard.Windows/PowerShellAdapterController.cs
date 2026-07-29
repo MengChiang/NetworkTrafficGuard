@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using NetworkTrafficGuard.Core.Adapters;
@@ -34,26 +35,30 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
 
         using var process = CreatePowerShellProcess(interfaceAlias, enabled);
 
-        process.Start();
-
-        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
+        {
+            return new AdapterControlResult(
+                IsDryRun: false,
+                Changed: false,
+                Message: $"Adapter '{interfaceAlias}' {action} was cancelled by UAC.");
+        }
 
         await WaitForExitWithTimeoutAsync(process, cancellationToken);
-
-        var output = await outputTask;
-        var error = await errorTask;
 
         if (process.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"PowerShell adapter {action} failed with exit code {process.ExitCode}: {error}{output}");
+                $"PowerShell adapter {action} failed with exit code {process.ExitCode}.");
         }
 
         return new AdapterControlResult(
             IsDryRun: false,
             Changed: true,
-            Message: $"Adapter '{interfaceAlias}' {action} command completed.");
+            Message: $"Adapter '{interfaceAlias}' {action} command completed. Windows may take a few seconds to update routes.");
     }
 
     private static Process CreatePowerShellProcess(string interfaceAlias, bool enabled)
@@ -64,24 +69,16 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
             [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
             {{command}} -Name '{{EscapePowerShell(interfaceAlias)}}' -Confirm:$false
             """;
+        var encodedCommand = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
 
         var startInfo = new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encodedCommand}",
+            UseShellExecute = true,
+            Verb = "runas",
+            WindowStyle = ProcessWindowStyle.Hidden
         };
-
-        startInfo.ArgumentList.Add("-NoProfile");
-        startInfo.ArgumentList.Add("-NonInteractive");
-        startInfo.ArgumentList.Add("-ExecutionPolicy");
-        startInfo.ArgumentList.Add("Bypass");
-        startInfo.ArgumentList.Add("-Command");
-        startInfo.ArgumentList.Add(script);
 
         return new Process
         {

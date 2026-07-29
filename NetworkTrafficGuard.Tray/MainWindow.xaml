@@ -78,7 +78,7 @@
                     </MenuItem.Header>
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="目前為 dry-run；EnableAdapterChanges=true 才會真的改網卡。" IsEnabled="False" />
+                <MenuItem Header="{Binding AdapterControlStatusText}" IsEnabled="False" />
             </MenuItem>
         </Menu>
 
@@ -136,6 +136,9 @@
                                     </StackPanel>
                                 </ToggleButton>
                             </StackPanel>
+                            <TextBlock Text="{Binding AdapterControlStatusText}"
+                                       Style="{StaticResource MutedText}"
+                                       Margin="0,8,0,0" />
                         </StackPanel>
                     </Grid>
                 </Border>

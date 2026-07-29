@@ -55,6 +55,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _wifiDetailText = "Press Update to check Wi-Fi routing.";
 
     [ObservableProperty]
+    private string _adapterControlStatusText = string.Empty;
+
+    [ObservableProperty]
     private string _mobileDataStatusText = "未確認";
 
     [ObservableProperty]
@@ -132,6 +135,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveRouteDownCommand = new RelayCommand(MoveSelectedRouteDown, () => SelectedRoute is not null);
         MonitorRouteCommand = new RelayCommand<RouteRowViewModel>(MonitorRoute);
         LoadEditableSettings();
+        UpdateAdapterControlStatus();
         StartAutoRefresh();
         StartTrafficTimer();
     }
@@ -296,13 +300,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
 
-        WifiStatusText = isWifiActive ? "接続中" : wifiRoute is null ? "未接続" : "待機中";
+        WifiStatusText = isWifiActive ? "使用中" : wifiRoute is null ? "未接続" : "可用";
         IsWifiToggleChecked = wifiRoute is not null;
         WifiDetailText = wifiRoute is null
             ? $"{Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}"
             : $"{Settings.PrimaryWifiInterfaceAlias} #{wifiRoute.InterfaceIndex} ・ {FormatNextHop(wifiRoute.NextHop)}";
 
-        MobileDataStatusText = isMobileDataActive ? "使用中" : mobileDataRoute is null ? "未接続" : "待機中";
+        MobileDataStatusText = isMobileDataActive ? "使用中" : mobileDataRoute is null ? "未接続" : "可用";
         MobileDataDetailText = mobileDataRoute is null
             ? $"{Settings.SimCarrierName} ・ {Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}"
             : $"{Settings.SimCarrierName} ・ {FormatNextHop(mobileDataRoute.NextHop)} ・ {Settings.SimInterfaceAlias} #{mobileDataRoute.InterfaceIndex}";
@@ -353,6 +357,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private async Task SetWifiEnabledAsync(bool enabled)
     {
         IsBusy = true;
+        var requestedStateText = enabled ? "開啟" : "關閉";
+        AdapterControlStatusText = $"{requestedStateText} Wi-Fi 中...";
 
         try
         {
@@ -363,10 +369,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 CancellationToken.None);
 
             RouteControlText = result.Message;
+            AdapterControlStatusText = result.Message;
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            await RunCheckAsync();
         }
         catch (Exception exception)
         {
             RouteControlText = exception.Message;
+            AdapterControlStatusText = exception.Message;
+            await RunCheckAsync();
         }
         finally
         {
@@ -461,9 +473,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
             OnPropertyChanged(nameof(RouterDisplayName));
             OnPropertyChanged(nameof(MobileDataCarrierName));
             OnPropertyChanged(nameof(OptionsSummary));
+            UpdateAdapterControlStatus();
             RouteControlText = "設定已儲存。";
             _ = RunCheckAsync();
         }
+    }
+
+    private void UpdateAdapterControlStatus()
+    {
+        AdapterControlStatusText = Settings.EnableAdapterChanges
+            ? "Wi-Fi 開關會要求系統管理員權限並實際變更網卡。"
+            : "目前是 dry-run：按鈕只預演，不會真的開關 Wi-Fi。";
     }
 
     private void SaveSettings()
