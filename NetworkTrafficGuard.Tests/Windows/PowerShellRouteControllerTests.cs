@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Settings;
-using NetworkTrafficGuard.Service.Windows;
+using NetworkTrafficGuard.Windows;
 
 namespace NetworkTrafficGuard.Tests.Windows;
 

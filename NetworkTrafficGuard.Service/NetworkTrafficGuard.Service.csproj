@@ -14,5 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NetworkTrafficGuard.Core\NetworkTrafficGuard.Core.csproj" />
+    <ProjectReference Include="..\NetworkTrafficGuard.Windows\NetworkTrafficGuard.Windows.csproj" />
   </ItemGroup>
 </Project>

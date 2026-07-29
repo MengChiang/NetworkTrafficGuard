@@ -3,4 +3,5 @@
   <Project Path="NetworkTrafficGuard.Service/NetworkTrafficGuard.Service.csproj" />
   <Project Path="NetworkTrafficGuard.Tests/NetworkTrafficGuard.Tests.csproj" />
   <Project Path="NetworkTrafficGuard.Tray/NetworkTrafficGuard.Tray.csproj" />
+  <Project Path="NetworkTrafficGuard.Windows/NetworkTrafficGuard.Windows.csproj" />
 </Solution>

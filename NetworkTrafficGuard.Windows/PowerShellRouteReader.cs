@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Routes;
 
-namespace NetworkTrafficGuard.Service.Windows;
+namespace NetworkTrafficGuard.Windows;
 
 public sealed class PowerShellRouteReader(ILogger<PowerShellRouteReader> logger) : IRouteReader
 {

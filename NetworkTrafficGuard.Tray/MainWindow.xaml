@@ -1,12 +1,119 @@
-﻿<Window x:Class="NetworkTrafficGuard.Tray.MainWindow"
+<Window x:Class="NetworkTrafficGuard.Tray.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:NetworkTrafficGuard.Tray"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="Network Traffic Guard" Height="680" Width="1040"
+        MinHeight="560" MinWidth="860"
+        Background="#F4F6F8">
+    <Window.Resources>
+        <Style x:Key="PanelBorder" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D8DEE6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#1F2933" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinWidth" Value="116" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="14,0" />
+        </Style>
+    </Window.Resources>
 
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,14">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="Network Traffic Guard" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="Windows default route diagnostics" Foreground="#5B6777" Margin="0,3,0,0" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Text="{Binding LastCheckedAt, StringFormat=Last checked: {0:yyyy-MM-dd HH:mm:ss}}"
+                           VerticalAlignment="Center" Foreground="#5B6777" Margin="0,0,14,0" />
+                <Button Content="Run Check" Command="{Binding RunCheckCommand}" />
+            </StackPanel>
+        </DockPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Status" Foreground="#5B6777" />
+                    <TextBlock Text="{Binding StatusText}" FontSize="26" FontWeight="SemiBold" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="{Binding StatusDetail}" FontSize="15" />
+                    <TextBlock Text="{Binding BestRouteText}" Foreground="#344054" Margin="0,10,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Default Routes" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding Routes}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="" Binding="{Binding Role}" Width="58" />
+                            <DataGridTextColumn Header="Prefix" Binding="{Binding DestinationPrefix}" Width="112" />
+                            <DataGridTextColumn Header="Next hop" Binding="{Binding NextHop}" Width="150" />
+                            <DataGridTextColumn Header="Interface" Binding="{Binding Interface}" Width="*" />
+                            <DataGridTextColumn Header="Route" Binding="{Binding RouteMetric}" Width="72" />
+                            <DataGridTextColumn Header="IF" Binding="{Binding InterfaceMetric}" Width="72" />
+                            <DataGridTextColumn Header="Total" Binding="{Binding TotalMetric}" Width="78" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="2">
+                <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Settings" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <TextBlock Text="{Binding SettingsSummary}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="Route Control" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <TextBlock Text="{Binding RouteControlText}" />
+                        <TextBlock Text="UI MVP always uses dry-run for route control." Foreground="#5B6777" Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

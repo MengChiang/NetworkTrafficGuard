@@ -3,7 +3,7 @@ using NetworkTrafficGuard.Core.Policy;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
 using NetworkTrafficGuard.Service.Diagnostics;
-using NetworkTrafficGuard.Service.Windows;
+using NetworkTrafficGuard.Windows;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.Configure<NetworkGuardSettings>(builder.Configuration);

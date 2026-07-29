@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
 
-namespace NetworkTrafficGuard.Service.Windows;
+namespace NetworkTrafficGuard.Windows;
 
 public sealed class PowerShellRouteController(ILogger<PowerShellRouteController> logger) : IRouteController
 {
