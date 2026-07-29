@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Net.NetworkInformation;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -129,6 +130,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _adapterController = adapterController;
         _policyEngine = policyEngine;
         RunCheckCommand = new AsyncRelayCommand(RunCheckAsync, () => !IsBusy);
+        OpenSettingsCommand = new RelayCommand(OpenSettingsWindow);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         SaveSelectedNetworkNameCommand = new RelayCommand(SaveSelectedNetworkName, () => SelectedRoute is not null);
         SetWifiEnabledCommand = new AsyncRelayCommand<bool?>(SetWifiEnabledAsync, _ => !IsBusy);
@@ -143,6 +145,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     public IAsyncRelayCommand RunCheckCommand { get; }
+
+    public IRelayCommand OpenSettingsCommand { get; }
 
     public IRelayCommand SaveSettingsCommand { get; }
 
@@ -438,6 +442,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
         EditableGatewayDisplayName = Settings.GatewayDisplayNames.TryGetValue(EditableGatewayAddress, out var displayName)
             ? displayName
             : Settings.SimDisplayName;
+    }
+
+    private void OpenSettingsWindow()
+    {
+        var owner = Application.Current.Windows
+            .OfType<Window>()
+            .FirstOrDefault(window => window.IsActive)
+            ?? Application.Current.MainWindow;
+
+        var settingsWindow = new SettingsWindow(Settings, Routes)
+        {
+            Owner = owner
+        };
+
+        if (settingsWindow.ShowDialog() == true)
+        {
+            LoadEditableSettings();
+            OnPropertyChanged(nameof(SettingsSummary));
+            OnPropertyChanged(nameof(WifiDisplayName));
+            OnPropertyChanged(nameof(RouterDisplayName));
+            OnPropertyChanged(nameof(MobileDataCarrierName));
+            OnPropertyChanged(nameof(OptionsSummary));
+            RouteControlText = "設定已儲存。";
+            _ = RunCheckAsync();
+        }
     }
 
     private void SaveSettings()

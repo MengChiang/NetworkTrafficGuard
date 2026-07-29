@@ -52,26 +52,13 @@
 
     <DockPanel>
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="設定">
-                <MenuItem StaysOpenOnClick="True">
-                    <MenuItem.Header>
-                        <StackPanel Width="280" Margin="4">
-                            <TextBlock Text="Wi-Fi 顯示名稱" Style="{StaticResource MutedText}" />
-                            <TextBox Text="{Binding EditableWifiDisplayName, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="SIM 路由器名稱" Style="{StaticResource MutedText}" />
-                            <TextBox Text="{Binding EditableSimDisplayName, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="電信商 / 回線名稱" Style="{StaticResource MutedText}" />
-                            <TextBox Text="{Binding EditableSimCarrierName, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="Gateway 對應請選取左側網路後在右側編輯。" Style="{StaticResource MutedText}" Margin="0,4,0,10" />
-                            <Button Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal">
-                                    <iconPacks:PackIconLucide Kind="Save" Width="16" Height="16" Margin="0,0,6,0" />
-                                    <TextBlock Text="儲存設定" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </MenuItem.Header>
-                </MenuItem>
+            <MenuItem Command="{Binding OpenSettingsCommand}">
+                <MenuItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <iconPacks:PackIconLucide Kind="Settings" Width="16" Height="16" Margin="0,0,8,0" />
+                        <TextBlock Text="設定" />
+                    </StackPanel>
+                </MenuItem.Header>
             </MenuItem>
             <MenuItem Header="Wi-Fi">
                 <MenuItem Command="{Binding EnableWifiCommand}">
