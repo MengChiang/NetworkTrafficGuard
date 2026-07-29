@@ -223,45 +223,44 @@
                 </Border>
 
                 <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
                             <iconPacks:PackIconLucide Kind="Activity" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
-                            <TextBlock Text="波型監看" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
-                        <TextBlock Text="{Binding SelectedNetworkTitle}" FontSize="20" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding SelectedNetworkDetail}" Style="{StaticResource MutedText}" Margin="0,4,0,12" />
 
-                        <TextBlock Text="顯示名稱" Style="{StaticResource MutedText}" />
-                        <TextBox Text="{Binding EditableSelectedNetworkName, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Command="{Binding SaveSelectedNetworkNameCommand}" HorizontalAlignment="Left" Margin="0,0,0,18">
-                            <StackPanel Orientation="Horizontal">
-                                <iconPacks:PackIconLucide Kind="Save" Width="15" Height="15" Margin="0,0,6,0" />
-                                <TextBlock Text="儲存對應" />
-                            </StackPanel>
-                        </Button>
-
-                        <TextBlock Text="即時流量" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding TrafficMonitors}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="#D7DDE5"
                                             BorderThickness="1"
                                             CornerRadius="6"
-                                            Padding="10"
-                                            Margin="0,0,0,10"
+                                            Padding="12"
+                                            Margin="0,0,0,12"
                                             Background="#FFFFFF">
                                         <StackPanel>
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="0,2,0,6" />
-                                            <TextBlock Text="{Binding RateText}" />
-                                            <TextBlock Text="{Binding Sparkline}" FontSize="24" FontFamily="Consolas" Margin="0,4,0,0" />
+                                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="0,2,0,8" />
+                                            <TextBlock Text="{Binding RateText}" Margin="0,0,0,8" />
+                                            <Border BorderBrush="#E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="8,6"
+                                                    Background="#FAFAFA">
+                                                <TextBlock Text="{Binding Sparkline}"
+                                                           FontSize="34"
+                                                           FontFamily="Consolas"
+                                                           Foreground="#111111"
+                                                           TextWrapping="NoWrap" />
+                                            </Border>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,18,0,0" />
-                    </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
                 </Border>
             </Grid>
         </Grid>

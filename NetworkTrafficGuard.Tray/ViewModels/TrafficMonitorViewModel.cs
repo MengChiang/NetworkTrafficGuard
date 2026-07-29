@@ -8,6 +8,20 @@ public sealed partial class TrafficMonitorViewModel(
     string title,
     string detail) : ObservableObject
 {
+    private const int MaxSamples = 24;
+    private const string EmptySparkline = "\u2581\u2582\u2581\u2582\u2581\u2582\u2581\u2582\u2581\u2582\u2581\u2582";
+    private static readonly char[] Blocks =
+    [
+        '\u2581',
+        '\u2582',
+        '\u2583',
+        '\u2584',
+        '\u2585',
+        '\u2586',
+        '\u2587',
+        '\u2588'
+    ];
+
     private readonly Queue<double> _samples = new();
 
     public string Key { get; } = key;
@@ -28,13 +42,13 @@ public sealed partial class TrafficMonitorViewModel(
     private string _rateText = "等待資料";
 
     [ObservableProperty]
-    private string _sparkline = "▁▁▁▁▁▁▁▁▁▁";
+    private string _sparkline = EmptySparkline;
 
     public void AddSample(double bps)
     {
         _samples.Enqueue(bps);
 
-        while (_samples.Count > 24)
+        while (_samples.Count > MaxSamples)
         {
             _samples.Dequeue();
         }
@@ -48,17 +62,16 @@ public sealed partial class TrafficMonitorViewModel(
 
         if (values.Count == 0)
         {
-            return "▁▁▁▁▁▁▁▁▁▁";
+            return EmptySparkline;
         }
 
         var max = Math.Max(1, values.Max());
-        var blocks = new[] { '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█' };
 
         return new string(values
             .Select(value =>
             {
-                var index = (int)Math.Round(value / max * (blocks.Length - 1));
-                return blocks[Math.Clamp(index, 0, blocks.Length - 1)];
+                var index = (int)Math.Round(value / max * (Blocks.Length - 1));
+                return Blocks[Math.Clamp(index, 0, Blocks.Length - 1)];
             })
             .ToArray());
     }
