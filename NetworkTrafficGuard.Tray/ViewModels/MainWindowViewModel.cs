@@ -331,13 +331,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (!_isSwitchingWifiAdapter)
         {
-            WifiStatusText = FormatWifiStatusText(wifiAdapterStatus, isWifiActive);
+            WifiStatusText = FormatWifiStatusText(wifiAdapterStatus, wifiRoute is not null);
             IsWifiToggleChecked = wifiAdapterStatus.IsEnabled;
         }
 
         WifiDetailText = FormatWifiDetailText(wifiRoute);
 
-        MobileDataStatusText = isMobileDataActive ? Texts.InUse : mobileDataRoute is null ? Texts.NotConnected : Texts.Available;
+        MobileDataStatusText = mobileDataRoute is null ? Texts.NotConnected : Texts.InUse;
         MobileDataDetailText = mobileDataRoute is null
             ? Texts.GatewayNotDetected
             : FormatNextHop(mobileDataRoute.NextHop);
@@ -407,14 +407,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private string FormatWifiStatusText(AdapterStatusResult adapterStatus, bool isWifiActive)
+    private string FormatWifiStatusText(AdapterStatusResult adapterStatus, bool hasWifiRoute)
     {
         if (!adapterStatus.Exists)
         {
             return Texts.Unknown;
         }
 
-        if (isWifiActive)
+        if (hasWifiRoute)
         {
             return Texts.InUse;
         }
