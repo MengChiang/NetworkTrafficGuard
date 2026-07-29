@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
@@ -16,7 +17,7 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
         ArgumentNullException.ThrowIfNull(settings);
 
         var matchedRoutes = defaultRoutes
-            .Where(route => IsDefaultRoute(route.DestinationPrefix))
+            .Where(route => DefaultRouteSelector.IsDefaultRoute(route.DestinationPrefix))
             .Where(route => IsSimRoute(route, settings))
             .OrderBy(route => route.TotalMetric)
             .ToList();
@@ -60,12 +61,6 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
             ChangedRouteCount: changedRouteCount,
             MatchedRoutes: matchedRoutes,
             Message: $"Removed {changedRouteCount} SIM default route(s).");
-    }
-
-    private static bool IsDefaultRoute(string destinationPrefix)
-    {
-        return string.Equals(destinationPrefix, "0.0.0.0/0", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(destinationPrefix, "::/0", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSimRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
@@ -117,6 +112,7 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
     {
         var script = $$"""
             $ErrorActionPreference = 'Stop'
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
             Get-NetRoute -DestinationPrefix '{{EscapePowerShell(route.DestinationPrefix)}}' -InterfaceIndex {{route.InterfaceIndex}} |
                 Where-Object { $_.NextHop -eq '{{EscapePowerShell(route.NextHop)}}' } |
                 Remove-NetRoute -Confirm:$false
@@ -127,6 +123,8 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
             FileName = "powershell.exe",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true
         };

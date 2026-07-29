@@ -4,12 +4,14 @@ using Microsoft.Extensions.Options;
 using NetworkTrafficGuard.Core.Policy;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
+using NetworkTrafficGuard.Service.Diagnostics;
 
 public sealed class Worker(
     ILogger<Worker> logger,
     IRouteReader routeReader,
     IRouteController routeController,
     INetworkPolicyEngine policyEngine,
+    RouteDiagnosticsLogger routeDiagnosticsLogger,
     IOptionsMonitor<NetworkGuardSettings> settingsMonitor,
     IConfiguration configuration,
     IHostApplicationLifetime applicationLifetime) : BackgroundService
@@ -25,12 +27,7 @@ public sealed class Worker(
                 var routes = await routeReader.GetDefaultRoutesAsync(stoppingToken);
                 var result = policyEngine.Evaluate(routes, settings);
 
-                logger.LogInformation(
-                    "Network status: {RiskLevel}. {Message} Notify={ShouldNotify}, BlockSim={ShouldBlockSimRoute}",
-                    result.RiskLevel,
-                    result.Message,
-                    result.ShouldNotify,
-                    result.ShouldBlockSimRoute);
+                routeDiagnosticsLogger.LogSnapshot(routes, settings, result);
 
                 if (result.ShouldBlockSimRoute)
                 {

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Routes;
@@ -14,6 +15,7 @@ public sealed class PowerShellRouteReader(ILogger<PowerShellRouteReader> logger)
 
     private const string RouteScript = """
         $ErrorActionPreference = 'Stop'
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $routes = Get-NetRoute | Where-Object {
             $_.DestinationPrefix -eq '0.0.0.0/0' -or $_.DestinationPrefix -eq '::/0'
         }
@@ -68,6 +70,8 @@ public sealed class PowerShellRouteReader(ILogger<PowerShellRouteReader> logger)
             FileName = "powershell.exe",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true
         };

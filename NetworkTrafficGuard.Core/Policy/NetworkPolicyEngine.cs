@@ -1,5 +1,6 @@
 using NetworkTrafficGuard.Core.Localization;
 using NetworkTrafficGuard.Core.Models;
+using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
 
 namespace NetworkTrafficGuard.Core.Policy;
@@ -13,11 +14,7 @@ public sealed class NetworkPolicyEngine : INetworkPolicyEngine
         ArgumentNullException.ThrowIfNull(defaultRoutes);
         ArgumentNullException.ThrowIfNull(settings);
 
-        var bestRoute = defaultRoutes
-            .Where(route => IsDefaultRoute(route.DestinationPrefix))
-            .OrderBy(route => route.TotalMetric)
-            .ThenBy(route => route.InterfaceIndex)
-            .FirstOrDefault();
+        var bestRoute = DefaultRouteSelector.GetBestDefaultRoute(defaultRoutes);
 
         if (bestRoute is null)
         {
@@ -45,12 +42,6 @@ public sealed class NetworkPolicyEngine : INetworkPolicyEngine
             shouldNotify: false,
             shouldBlockSimRoute: false,
             settings.CultureName);
-    }
-
-    private static bool IsDefaultRoute(string destinationPrefix)
-    {
-        return string.Equals(destinationPrefix, "0.0.0.0/0", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(destinationPrefix, "::/0", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSimRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
