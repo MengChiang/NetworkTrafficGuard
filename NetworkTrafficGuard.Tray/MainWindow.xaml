@@ -226,6 +226,20 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Width="58">
+                                    <DataGridTemplateColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.AlertColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTemplateColumn.Header>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsAlertEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Command="{Binding DataContext.AlertRouteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                      CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Binding="{Binding Priority}" Width="56">
                                     <DataGridTextColumn.Header>
                                         <TextBlock Text="{Binding DataContext.Texts.PriorityColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />

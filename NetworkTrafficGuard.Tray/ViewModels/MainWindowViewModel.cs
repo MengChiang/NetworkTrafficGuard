@@ -30,6 +30,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _primaryTrafficName = "Network Traffic Guard";
     private TrafficMonitorViewModel? _primaryTrafficMonitor;
     private readonly HashSet<string> _monitoredRouteKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _alertRouteKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, TrafficMonitorViewModel> _alertTrafficMonitors = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isWifiRouteAvailable;
+    private DateTimeOffset? _lastTrafficAlertAt;
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -128,6 +132,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         Settings = settings;
         _monitoredRouteKeys.UnionWith(settings.MonitoredRouteKeys);
+        _alertRouteKeys.UnionWith(settings.AlertRouteKeys);
         _routeReader = routeReader;
         _routeController = routeController;
         _adapterController = adapterController;
@@ -143,6 +148,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveRouteUpCommand = new AsyncRelayCommand(MoveSelectedRouteUpAsync, () => SelectedRoute is not null && !IsBusy);
         MoveRouteDownCommand = new AsyncRelayCommand(MoveSelectedRouteDownAsync, () => SelectedRoute is not null && !IsBusy);
         MonitorRouteCommand = new RelayCommand<RouteRowViewModel>(MonitorRoute);
+        AlertRouteCommand = new RelayCommand<RouteRowViewModel>(AlertRoute);
         LoadEditableSettings();
         UpdateAdapterControlStatus();
         StartAutoRefresh();
@@ -170,6 +176,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IAsyncRelayCommand MoveRouteDownCommand { get; }
 
     public IRelayCommand<RouteRowViewModel> MonitorRouteCommand { get; }
+
+    public IRelayCommand<RouteRowViewModel> AlertRouteCommand { get; }
 
     public string SettingsSummary =>
         $"Wi-Fi {Settings.PrimaryWifiDisplayName} ({Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}) | " +
@@ -239,6 +247,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ? null
                 : CreateRouteKey(SelectedRoute.InterfaceIndex, SelectedRoute.RawGateway);
             var previousMonitoredKeys = _monitoredRouteKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var previousAlertKeys = _alertRouteKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var bestRouteKey = bestRoute is null
                 ? null
                 : CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.NextHop);
@@ -256,6 +265,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         route,
                         index + 1,
                         previousMonitoredKeys.Contains(routeKey),
+                        previousAlertKeys.Contains(routeKey),
                         Settings);
                 }));
 
@@ -270,6 +280,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             UpdatePhoneSummary(orderedRoutes, bestRoute, wifiAdapterStatus);
             _bestInterfaceIndex = bestRoute?.InterfaceIndex;
             SyncTrafficMonitors();
+            SyncAlertTrafficMonitors();
 
             StatusText = policyResult.RiskLevel.ToString();
             StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSim={policyResult.ShouldBlockSimRoute}";
@@ -313,6 +324,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
             RoutePriorities = new Dictionary<string, int>(source.RoutePriorities, StringComparer.OrdinalIgnoreCase),
             MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
+            AlertRouteKeys = [.. source.AlertRouteKeys],
+            AlertThresholdKbps = source.AlertThresholdKbps,
             Mode = source.Mode,
             EnableRouteChanges = false,
             EnableAdapterChanges = false,
@@ -331,6 +344,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var mobileDataRoute = orderedRoutes.FirstOrDefault(IsMobileDataRoute);
         var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
+        _isWifiRouteAvailable = wifiRoute is not null && wifiAdapterStatus.IsEnabled;
 
         if (!_isSwitchingWifiAdapter)
         {
@@ -623,6 +637,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Settings.MonitoredRouteKeys = monitoredRouteKeys;
         _monitoredRouteKeys.Clear();
         _monitoredRouteKeys.UnionWith(monitoredRouteKeys);
+
+        var alertRouteKeys = Routes
+            .Where(route => route.IsAlertEnabled)
+            .Select(route => route.RouteKey)
+            .ToList();
+
+        Settings.AlertRouteKeys = alertRouteKeys;
+        _alertRouteKeys.Clear();
+        _alertRouteKeys.UnionWith(alertRouteKeys);
         TraySettingsLoader.Save(Settings);
     }
 
@@ -678,6 +701,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SaveRoutePreferences();
         SelectedRoute = route;
         SyncTrafficMonitors();
+    }
+
+    private void AlertRoute(RouteRowViewModel? route)
+    {
+        if (route is null)
+        {
+            return;
+        }
+
+        var routeKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
+
+        if (route.IsAlertEnabled)
+        {
+            _alertRouteKeys.Add(routeKey);
+        }
+        else
+        {
+            _alertRouteKeys.Remove(routeKey);
+            _alertTrafficMonitors.Remove(routeKey);
+        }
+
+        SaveRoutePreferences();
+        SelectedRoute = route;
+        SyncAlertTrafficMonitors();
     }
 
     private void LoadEditableSettings()
@@ -857,6 +904,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             SampleTraffic(monitor);
         }
+
+        SampleAlertTraffic();
     }
 
     private void UpdateTrayToolTipText()
@@ -867,14 +916,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             : $"{_primaryTrafficName}  {rateText}";
     }
 
-    private static void SampleTraffic(TrafficMonitorViewModel monitor)
+    private static double? SampleTraffic(TrafficMonitorViewModel monitor)
     {
         var networkInterface = FindNetworkInterface(monitor.InterfaceIndex);
 
         if (networkInterface is null)
         {
             monitor.RateText = "找不到網卡";
-            return;
+            return null;
         }
 
         var statistics = networkInterface.GetIPv4Statistics();
@@ -889,7 +938,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             monitor.LastBytesReceived = bytesReceived;
             monitor.LastBytesSent = bytesSent;
             monitor.LastSampledAt = now;
-            return;
+            return null;
         }
 
         var elapsedSeconds = Math.Max(0.001, (now - monitor.LastSampledAt.Value).TotalSeconds);
@@ -903,6 +952,77 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         monitor.RateText = $"↓ {FormatBitsPerSecond(rxBps)} / ↑ {FormatBitsPerSecond(txBps)}";
         monitor.AddSample(totalBps);
+        return totalBps;
+    }
+
+    private void SampleAlertTraffic()
+    {
+        if (_isWifiRouteAvailable || _alertRouteKeys.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var route in Routes.Where(route => route.IsAlertEnabled))
+        {
+            var routeKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
+
+            if (!_alertTrafficMonitors.TryGetValue(routeKey, out var monitor))
+            {
+                monitor = new TrafficMonitorViewModel(
+                    routeKey,
+                    route.InterfaceIndex,
+                    route.NetworkName,
+                    route.Gateway);
+                _alertTrafficMonitors[routeKey] = monitor;
+            }
+
+            var totalBps = SampleTraffic(monitor);
+
+            if (totalBps is not null && totalBps.Value >= GetAlertThresholdBps())
+            {
+                ShowTrafficAlert(route, totalBps.Value);
+                return;
+            }
+        }
+    }
+
+    private double GetAlertThresholdBps()
+    {
+        return Math.Max(1, Settings.AlertThresholdKbps) * 1000d;
+    }
+
+    private void ShowTrafficAlert(RouteRowViewModel route, double totalBps)
+    {
+        var now = DateTimeOffset.Now;
+
+        if (_lastTrafficAlertAt is not null
+            && now - _lastTrafficAlertAt.Value < TimeSpan.FromSeconds(60))
+        {
+            return;
+        }
+
+        _lastTrafficAlertAt = now;
+
+        var owner = System.Windows.Application.Current.MainWindow;
+
+        if (owner is not null)
+        {
+            owner.ShowInTaskbar = true;
+            owner.Show();
+            owner.WindowState = WindowState.Normal;
+            owner.Activate();
+        }
+
+        System.Windows.MessageBox.Show(
+            owner,
+            string.Format(
+                Texts.TrafficAlertMessageFormat,
+                route.NetworkName,
+                FormatBitsPerSecond(totalBps),
+                Math.Max(1, Settings.AlertThresholdKbps)),
+            Texts.TrafficAlertTitle,
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
     }
 
     private void SyncTrafficMonitors()
@@ -940,6 +1060,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         TrafficMonitors = nextMonitors;
+    }
+
+    private void SyncAlertTrafficMonitors()
+    {
+        var routeKeys = Routes
+            .Where(route => route.IsAlertEnabled)
+            .Select(route => route.RouteKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in _alertTrafficMonitors.Keys.ToList())
+        {
+            if (!routeKeys.Contains(key))
+            {
+                _alertTrafficMonitors.Remove(key);
+            }
+        }
     }
 
     private RouteRowViewModel? RestoreSelection(string? routeKey)

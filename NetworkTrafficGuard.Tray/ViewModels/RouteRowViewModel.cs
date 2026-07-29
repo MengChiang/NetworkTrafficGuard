@@ -8,6 +8,7 @@ public sealed partial class RouteRowViewModel(
     DefaultRouteInfo route,
     int priority,
     bool isMonitored,
+    bool isAlertEnabled,
     NetworkGuardSettings settings)
     : ObservableObject
 {
@@ -34,6 +35,9 @@ public sealed partial class RouteRowViewModel(
 
     [ObservableProperty]
     private bool _isMonitored = isMonitored;
+
+    [ObservableProperty]
+    private bool _isAlertEnabled = isAlertEnabled;
 
     private static string FormatNextHop(string nextHop, NetworkGuardSettings settings)
     {

@@ -24,6 +24,7 @@ public partial class SettingsWindow : Window, INotifyPropertyChanged
                 .Select(group => new NetworkNameMappingRowViewModel(group.First())));
         EnableAdapterChanges = _settings.EnableAdapterChanges;
         EnableRouteChanges = _settings.EnableRouteChanges;
+        AlertThresholdKbps = Math.Max(1, _settings.AlertThresholdKbps);
         DataContext = this;
     }
 
@@ -36,6 +37,8 @@ public partial class SettingsWindow : Window, INotifyPropertyChanged
     public bool EnableAdapterChanges { get; set; }
 
     public bool EnableRouteChanges { get; set; }
+
+    public int AlertThresholdKbps { get; set; }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
@@ -67,6 +70,7 @@ public partial class SettingsWindow : Window, INotifyPropertyChanged
 
         _settings.EnableAdapterChanges = EnableAdapterChanges;
         _settings.EnableRouteChanges = EnableRouteChanges;
+        _settings.AlertThresholdKbps = Math.Max(1, AlertThresholdKbps);
 
         TraySettingsLoader.Save(_settings);
         DialogResult = true;

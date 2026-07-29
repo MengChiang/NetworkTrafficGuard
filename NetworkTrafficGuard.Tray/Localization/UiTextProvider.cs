@@ -37,6 +37,7 @@ public static class UiTextProvider
         MoveUp = "上移",
         MoveDown = "下移",
         ShowColumn = "顯示",
+        AlertColumn = "警示",
         PriorityColumn = "優先",
         NetworkColumn = "網路",
         GatewayColumn = "閘道",
@@ -50,6 +51,9 @@ public static class UiTextProvider
         LanguageLabel = "語言",
         AllowAdapterChanges = "允許變更 Wi-Fi 介面狀態（需要系統管理員權限）",
         AllowRouteChanges = "允許變更路由優先順序（需要系統管理員權限）",
+        AlertSettingsTitle = "警示設定",
+        AlertThresholdLabel = "警示門檻",
+        AlertThresholdUnit = "Kbps",
         Save = "儲存",
         Cancel = "取消",
         InUse = "使用中",
@@ -75,7 +79,9 @@ public static class UiTextProvider
         EnableAction = "啟用",
         DisableAction = "停用",
         WifiUpdatingFormat = "{0} Wi-Fi 中...",
-        AdapterStateMismatchFormat = "{0} Wi-Fi 指令已送出，目前介面狀態為 {1}。"
+        AdapterStateMismatchFormat = "{0} Wi-Fi 指令已送出，目前介面狀態為 {1}。",
+        TrafficAlertTitle = "網路流量異常",
+        TrafficAlertMessageFormat = "Wi-Fi 目前未作為可用連線，{0} 的流量已達 {1}，超過警示門檻 {2} Kbps。"
     };
 
     private static UiText SimplifiedChinese { get; } = TraditionalChinese with
@@ -89,6 +95,7 @@ public static class UiTextProvider
         MoveUp = "上移",
         MoveDown = "下移",
         ShowColumn = "显示",
+        AlertColumn = "警示",
         PriorityColumn = "优先",
         NetworkColumn = "网络",
         GatewayColumn = "网关",
@@ -101,6 +108,9 @@ public static class UiTextProvider
         LanguageLabel = "语言",
         AllowAdapterChanges = "允许变更 Wi-Fi 接口状态（需要管理员权限）",
         AllowRouteChanges = "允许变更路由优先顺序（需要管理员权限）",
+        AlertSettingsTitle = "警示设置",
+        AlertThresholdLabel = "警示阈值",
+        AlertThresholdUnit = "Kbps",
         Save = "保存",
         Cancel = "取消",
         Available = "可用",
@@ -124,7 +134,9 @@ public static class UiTextProvider
         NameSavedNotice = "显示名称已保存。",
         EnableAction = "启用",
         DisableAction = "停用",
-        AdapterStateMismatchFormat = "{0} Wi-Fi 指令已发送，当前接口状态为 {1}。"
+        AdapterStateMismatchFormat = "{0} Wi-Fi 指令已发送，当前接口状态为 {1}。",
+        TrafficAlertTitle = "网络流量异常",
+        TrafficAlertMessageFormat = "Wi-Fi 当前不是可用连接，{0} 的流量已达到 {1}，超过警示阈值 {2} Kbps。"
     };
 
     private static UiText Japanese { get; } = TraditionalChinese with
@@ -138,6 +150,7 @@ public static class UiTextProvider
         MoveUp = "上へ",
         MoveDown = "下へ",
         ShowColumn = "表示",
+        AlertColumn = "警告",
         PriorityColumn = "優先",
         NetworkColumn = "ネットワーク",
         GatewayColumn = "ゲートウェイ",
@@ -151,6 +164,9 @@ public static class UiTextProvider
         LanguageLabel = "言語",
         AllowAdapterChanges = "Wi-Fi インターフェイスの状態変更を許可する（管理者権限が必要）",
         AllowRouteChanges = "ルート優先順位の変更を許可する（管理者権限が必要）",
+        AlertSettingsTitle = "警告設定",
+        AlertThresholdLabel = "警告しきい値",
+        AlertThresholdUnit = "Kbps",
         Save = "保存",
         Cancel = "キャンセル",
         InUse = "使用中",
@@ -176,7 +192,9 @@ public static class UiTextProvider
         EnableAction = "有効化",
         DisableAction = "無効化",
         WifiUpdatingFormat = "Wi-Fi を{0}しています...",
-        AdapterStateMismatchFormat = "Wi-Fi の{0}コマンドを送信しました。現在の状態は {1} です。"
+        AdapterStateMismatchFormat = "Wi-Fi の{0}コマンドを送信しました。現在の状態は {1} です。",
+        TrafficAlertTitle = "ネットワーク通信量の異常",
+        TrafficAlertMessageFormat = "Wi-Fi は現在利用可能な接続ではありません。{0} の通信量が {1} に達し、警告しきい値 {2} Kbps を超えました。"
     };
 
     private static UiText English { get; } = TraditionalChinese with
@@ -190,6 +208,7 @@ public static class UiTextProvider
         MoveUp = "Move Up",
         MoveDown = "Move Down",
         ShowColumn = "Show",
+        AlertColumn = "Alert",
         PriorityColumn = "Priority",
         NetworkColumn = "Network",
         GatewayColumn = "Gateway",
@@ -203,6 +222,9 @@ public static class UiTextProvider
         LanguageLabel = "Language",
         AllowAdapterChanges = "Allow Wi-Fi interface changes (administrator permission required)",
         AllowRouteChanges = "Allow route priority changes (administrator permission required)",
+        AlertSettingsTitle = "Alert Settings",
+        AlertThresholdLabel = "Alert threshold",
+        AlertThresholdUnit = "Kbps",
         Save = "Save",
         Cancel = "Cancel",
         InUse = "In Use",
@@ -228,6 +250,8 @@ public static class UiTextProvider
         EnableAction = "Enabling",
         DisableAction = "Disabling",
         WifiUpdatingFormat = "{0} Wi-Fi...",
-        AdapterStateMismatchFormat = "{0} Wi-Fi command was sent. Current interface state is {1}."
+        AdapterStateMismatchFormat = "{0} Wi-Fi command was sent. Current interface state is {1}.",
+        TrafficAlertTitle = "Network Traffic Alert",
+        TrafficAlertMessageFormat = "Wi-Fi is not currently available. {0} traffic reached {1}, exceeding the alert threshold of {2} Kbps."
     };
 }

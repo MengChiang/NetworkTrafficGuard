@@ -27,6 +27,10 @@ public sealed class NetworkGuardSettings
 
     public List<string> MonitoredRouteKeys { get; set; } = [];
 
+    public List<string> AlertRouteKeys { get; set; } = [];
+
+    public int AlertThresholdKbps { get; set; } = 100;
+
     public GuardMode Mode { get; set; } = GuardMode.WarnOnly;
 
     public bool EnableRouteChanges { get; set; }

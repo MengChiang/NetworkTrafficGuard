@@ -22,6 +22,8 @@ public sealed record UiText
 
     public required string ShowColumn { get; init; }
 
+    public required string AlertColumn { get; init; }
+
     public required string PriorityColumn { get; init; }
 
     public required string NetworkColumn { get; init; }
@@ -47,6 +49,12 @@ public sealed record UiText
     public required string AllowAdapterChanges { get; init; }
 
     public required string AllowRouteChanges { get; init; }
+
+    public required string AlertSettingsTitle { get; init; }
+
+    public required string AlertThresholdLabel { get; init; }
+
+    public required string AlertThresholdUnit { get; init; }
 
     public required string Save { get; init; }
 
@@ -99,4 +107,8 @@ public sealed record UiText
     public required string WifiUpdatingFormat { get; init; }
 
     public required string AdapterStateMismatchFormat { get; init; }
+
+    public required string TrafficAlertTitle { get; init; }
+
+    public required string TrafficAlertMessageFormat { get; init; }
 }

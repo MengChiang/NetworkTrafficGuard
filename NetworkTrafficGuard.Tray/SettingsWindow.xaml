@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="{Binding Texts.SettingsTitle}" Height="440" Width="760"
+        Title="{Binding Texts.SettingsTitle}" Height="500" Width="760"
         MinHeight="360" MinWidth="640"
         WindowStartupLocation="CenterOwner"
         Background="#F3F5F7">
@@ -61,6 +61,21 @@
                 <CheckBox IsChecked="{Binding EnableRouteChanges, Mode=TwoWay}"
                           Margin="0,8,0,0"
                           Content="{Binding Texts.AllowRouteChanges}" />
+                <TextBlock Text="{Binding Texts.AlertSettingsTitle}"
+                           FontWeight="SemiBold"
+                           Margin="0,14,0,6" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Texts.AlertThresholdLabel}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0" />
+                    <TextBox Text="{Binding AlertThresholdKbps, UpdateSourceTrigger=PropertyChanged}"
+                             Width="88"
+                             MinWidth="88"
+                             Margin="0" />
+                    <TextBlock Text="{Binding Texts.AlertThresholdUnit}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
