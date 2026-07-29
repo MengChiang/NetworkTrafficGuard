@@ -23,14 +23,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly INetworkPolicyEngine _policyEngine;
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly DispatcherTimer _trafficTimer = new();
-    private readonly Queue<double> _trafficSamples = new();
     private int? _bestInterfaceIndex;
-    private int? _monitoredInterfaceIndex;
-    private long? _lastBytesReceived;
-    private long? _lastBytesSent;
-    private DateTimeOffset? _lastTrafficSampleAt;
     private string? _selectedRouteKey;
-    private string? _monitoredRouteKey;
+    private readonly HashSet<string> _monitoredRouteKeys = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -69,10 +64,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _activeLineText = "未確認";
 
     [ObservableProperty]
-    private string _trafficRateText = "即時流量: 未確認";
-
-    [ObservableProperty]
-    private string _trafficSparkline = "▁▁▁▁▁▁▁▁▁▁";
+    private ObservableCollection<TrafficMonitorViewModel> _trafficMonitors = [];
 
     [ObservableProperty]
     private string _editableWifiDisplayName = string.Empty;
@@ -213,11 +205,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var previousSelectedKey = SelectedRoute is null
                 ? null
                 : CreateRouteKey(SelectedRoute.InterfaceIndex, SelectedRoute.RawGateway);
-            var previousMonitoredKey = _monitoredRouteKey;
+            var previousMonitoredKeys = _monitoredRouteKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var bestRouteKey = bestRoute is null
                 ? null
                 : CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.NextHop);
-            var monitoredRouteKey = previousMonitoredKey ?? bestRouteKey;
+
+            if (previousMonitoredKeys.Count == 0 && bestRouteKey is not null)
+            {
+                previousMonitoredKeys.Add(bestRouteKey);
+            }
 
             Routes = new ObservableCollection<RouteRowViewModel>(
                 orderedRoutes.Select(route =>
@@ -226,7 +222,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     return new RouteRowViewModel(
                         route,
                         route == bestRoute,
-                        routeKey == monitoredRouteKey,
+                        previousMonitoredKeys.Contains(routeKey),
                         Settings);
                 }));
 
@@ -240,10 +236,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             UpdatePhoneSummary(orderedRoutes, bestRoute);
             _bestInterfaceIndex = bestRoute?.InterfaceIndex;
-            var monitoredRoute = Routes.FirstOrDefault(route => route.IsMonitored)
-                ?? SelectedRoute
-                ?? Routes.FirstOrDefault();
-            MonitorRoute(monitoredRoute);
+            SyncTrafficMonitors();
 
             StatusText = policyResult.RiskLevel.ToString();
             StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSim={policyResult.ShouldBlockSimRoute}";
@@ -419,18 +412,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (route is null)
         {
-            SetTrafficMonitor(_bestInterfaceIndex);
             return;
         }
 
-        foreach (var candidate in Routes)
+        var routeKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
+
+        if (route.IsMonitored)
         {
-            candidate.IsMonitored = ReferenceEquals(candidate, route);
+            _monitoredRouteKeys.Add(routeKey);
+        }
+        else
+        {
+            _monitoredRouteKeys.Remove(routeKey);
         }
 
         SelectedRoute = route;
-        _monitoredRouteKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
-        SetTrafficMonitor(route.InterfaceIndex);
+        SyncTrafficMonitors();
     }
 
     private void LoadEditableSettings()
@@ -571,17 +568,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void SampleTraffic()
     {
-        if (_monitoredInterfaceIndex is null)
+        if (TrafficMonitors.Count == 0)
         {
-            TrafficRateText = "即時流量: 等待路由檢查";
             return;
         }
 
-        var networkInterface = FindNetworkInterface(_monitoredInterfaceIndex.Value);
+        foreach (var monitor in TrafficMonitors)
+        {
+            SampleTraffic(monitor);
+        }
+    }
+
+    private static void SampleTraffic(TrafficMonitorViewModel monitor)
+    {
+        var networkInterface = FindNetworkInterface(monitor.InterfaceIndex);
 
         if (networkInterface is null)
         {
-            TrafficRateText = "即時流量: 找不到選取的網卡";
+            monitor.RateText = "找不到網卡";
             return;
         }
 
@@ -590,38 +594,64 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var bytesReceived = statistics.BytesReceived;
         var bytesSent = statistics.BytesSent;
 
-        if (_lastBytesReceived is null || _lastBytesSent is null || _lastTrafficSampleAt is null)
+        if (monitor.LastBytesReceived is null
+            || monitor.LastBytesSent is null
+            || monitor.LastSampledAt is null)
         {
-            _lastBytesReceived = bytesReceived;
-            _lastBytesSent = bytesSent;
-            _lastTrafficSampleAt = now;
+            monitor.LastBytesReceived = bytesReceived;
+            monitor.LastBytesSent = bytesSent;
+            monitor.LastSampledAt = now;
             return;
         }
 
-        var elapsedSeconds = Math.Max(0.001, (now - _lastTrafficSampleAt.Value).TotalSeconds);
-        var rxBps = Math.Max(0, (bytesReceived - _lastBytesReceived.Value) * 8 / elapsedSeconds);
-        var txBps = Math.Max(0, (bytesSent - _lastBytesSent.Value) * 8 / elapsedSeconds);
+        var elapsedSeconds = Math.Max(0.001, (now - monitor.LastSampledAt.Value).TotalSeconds);
+        var rxBps = Math.Max(0, (bytesReceived - monitor.LastBytesReceived.Value) * 8 / elapsedSeconds);
+        var txBps = Math.Max(0, (bytesSent - monitor.LastBytesSent.Value) * 8 / elapsedSeconds);
         var totalBps = rxBps + txBps;
 
-        _lastBytesReceived = bytesReceived;
-        _lastBytesSent = bytesSent;
-        _lastTrafficSampleAt = now;
+        monitor.LastBytesReceived = bytesReceived;
+        monitor.LastBytesSent = bytesSent;
+        monitor.LastSampledAt = now;
 
-        TrafficRateText = $"監看 {networkInterface.Name}: ↓ {FormatBitsPerSecond(rxBps)} / ↑ {FormatBitsPerSecond(txBps)}";
-        AddTrafficSample(totalBps);
+        monitor.RateText = $"↓ {FormatBitsPerSecond(rxBps)} / ↑ {FormatBitsPerSecond(txBps)}";
+        monitor.AddSample(totalBps);
     }
 
-    private void SetTrafficMonitor(int? interfaceIndex)
+    private void SyncTrafficMonitors()
     {
-        if (_monitoredInterfaceIndex == interfaceIndex)
+        if (_monitoredRouteKeys.Count == 0 && _bestInterfaceIndex is { } bestInterfaceIndex)
         {
-            return;
+            var bestRoute = Routes.FirstOrDefault(route => route.InterfaceIndex == bestInterfaceIndex && route.Role == "主回線");
+
+            if (bestRoute is not null)
+            {
+                _monitoredRouteKeys.Add(CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.RawGateway));
+                bestRoute.IsMonitored = true;
+            }
         }
 
-        _monitoredInterfaceIndex = interfaceIndex;
-        _trafficSamples.Clear();
-        TrafficSparkline = "▁▁▁▁▁▁▁▁▁▁";
-        ResetTrafficBaseline();
+        var existingByKey = TrafficMonitors.ToDictionary(monitor => monitor.Key, StringComparer.OrdinalIgnoreCase);
+        var nextMonitors = new ObservableCollection<TrafficMonitorViewModel>();
+
+        foreach (var route in Routes.Where(route => route.IsMonitored))
+        {
+            var routeKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
+
+            if (!_monitoredRouteKeys.Contains(routeKey))
+            {
+                _monitoredRouteKeys.Add(routeKey);
+            }
+
+            nextMonitors.Add(existingByKey.TryGetValue(routeKey, out var existing)
+                ? existing
+                : new TrafficMonitorViewModel(
+                    routeKey,
+                    route.InterfaceIndex,
+                    route.NetworkName,
+                    $"{route.Gateway} ・ {route.Interface}"));
+        }
+
+        TrafficMonitors = nextMonitors;
     }
 
     private RouteRowViewModel? RestoreSelection(string? routeKey)
@@ -634,25 +664,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private static string CreateRouteKey(int interfaceIndex, string gateway)
     {
         return $"{interfaceIndex}|{gateway}";
-    }
-
-    private void ResetTrafficBaseline()
-    {
-        _lastBytesReceived = null;
-        _lastBytesSent = null;
-        _lastTrafficSampleAt = null;
-    }
-
-    private void AddTrafficSample(double bps)
-    {
-        _trafficSamples.Enqueue(bps);
-
-        while (_trafficSamples.Count > 24)
-        {
-            _trafficSamples.Dequeue();
-        }
-
-        TrafficSparkline = CreateSparkline(_trafficSamples);
     }
 
     private static NetworkInterface? FindNetworkInterface(int interfaceIndex)
@@ -695,24 +706,4 @@ public sealed partial class MainWindowViewModel : ObservableObject
         };
     }
 
-    private static string CreateSparkline(IEnumerable<double> samples)
-    {
-        var values = samples.ToList();
-
-        if (values.Count == 0)
-        {
-            return "▁▁▁▁▁▁▁▁▁▁";
-        }
-
-        var max = Math.Max(1, values.Max());
-        var blocks = new[] { '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█' };
-
-        return new string(values
-            .Select(value =>
-            {
-                var index = (int)Math.Round(value / max * (blocks.Length - 1));
-                return blocks[Math.Clamp(index, 0, blocks.Length - 1)];
-            })
-            .ToArray());
-    }
 }

@@ -241,8 +241,25 @@
                         </Button>
 
                         <TextBlock Text="即時流量" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <TextBlock Text="{Binding TrafficRateText}" />
-                        <TextBlock Text="{Binding TrafficSparkline}" FontSize="28" FontFamily="Consolas" Margin="0,8,0,0" />
+                        <ItemsControl ItemsSource="{Binding TrafficMonitors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#D7DDE5"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="10"
+                                            Margin="0,0,0,10"
+                                            Background="#FFFFFF">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="0,2,0,6" />
+                                            <TextBlock Text="{Binding RateText}" />
+                                            <TextBlock Text="{Binding Sparkline}" FontSize="24" FontFamily="Consolas" Margin="0,4,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                         <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,18,0,0" />
                     </StackPanel>
                 </Border>
