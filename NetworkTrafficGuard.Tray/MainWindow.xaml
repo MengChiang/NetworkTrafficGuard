@@ -71,6 +71,14 @@
                         </StackPanel>
                     </MenuItem.Header>
                 </MenuItem>
+                <MenuItem Command="{Binding OpenAlertSettingsCommand}">
+                    <MenuItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="Bell" Width="16" Height="16" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding Texts.AlertSettingsTitle}" />
+                        </StackPanel>
+                    </MenuItem.Header>
+                </MenuItem>
                 <Separator />
                 <MenuItem>
                     <MenuItem.Header>

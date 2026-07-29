@@ -146,6 +146,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _policyEngine = policyEngine;
         RunCheckCommand = new AsyncRelayCommand(RunCheckAsync, () => !IsBusy);
         OpenSettingsCommand = new RelayCommand(OpenSettingsWindow);
+        OpenAlertSettingsCommand = new RelayCommand(OpenAlertSettingsWindow);
         ChangeCultureCommand = new RelayCommand<string>(ChangeCulture);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         SaveSelectedNetworkNameCommand = new RelayCommand(SaveSelectedNetworkName, () => SelectedRoute is not null);
@@ -169,6 +170,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IAsyncRelayCommand RunCheckCommand { get; }
 
     public IRelayCommand OpenSettingsCommand { get; }
+
+    public IRelayCommand OpenAlertSettingsCommand { get; }
 
     public IRelayCommand<string> ChangeCultureCommand { get; }
 
@@ -819,6 +822,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
             UpdateAdapterControlStatus();
             RouteControlText = Texts.SettingsSaved;
             _ = RunCheckAsync();
+        }
+    }
+
+    private void OpenAlertSettingsWindow()
+    {
+        var owner = System.Windows.Application.Current.Windows
+            .OfType<Window>()
+            .FirstOrDefault(window => window.IsActive)
+            ?? System.Windows.Application.Current.MainWindow;
+
+        var alertSettingsWindow = new AlertSettingsWindow(Settings)
+        {
+            Owner = owner
+        };
+
+        if (alertSettingsWindow.ShowDialog() == true)
+        {
+            RouteControlText = Texts.SettingsSaved;
+            SyncAlertTrafficMonitors();
         }
     }
 
