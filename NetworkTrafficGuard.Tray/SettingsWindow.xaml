@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="{Binding Texts.SettingsTitle}" Height="430" Width="760"
-        MinHeight="360" MinWidth="640"
+        Title="{Binding Texts.SettingsTitle}" Height="430" Width="860"
+        MinHeight="360" MinWidth="760"
         WindowStartupLocation="CenterOwner"
         Background="#F3F5F7">
     <Grid Margin="16">
@@ -30,9 +30,19 @@
                   GridLinesVisibility="Horizontal"
                   RowHeaderWidth="0">
             <DataGrid.Columns>
-                <DataGridTextColumn Binding="{Binding CurrentNetwork}" IsReadOnly="True" Width="*">
+                <DataGridTextColumn Binding="{Binding DetectedNetwork}" IsReadOnly="True" Width="2*">
                     <DataGridTextColumn.Header>
                         <TextBlock Text="{Binding DataContext.Texts.ExistingNetworkColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                    </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Binding="{Binding Gateway}" IsReadOnly="True" Width="1.5*">
+                    <DataGridTextColumn.Header>
+                        <TextBlock Text="{Binding DataContext.Texts.GatewayColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                    </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Binding="{Binding AddressFamily}" IsReadOnly="True" Width="80">
+                    <DataGridTextColumn.Header>
+                        <TextBlock Text="{Binding DataContext.Texts.TypeColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                     </DataGridTextColumn.Header>
                 </DataGridTextColumn>
                 <DataGridTemplateColumn Width="260">
