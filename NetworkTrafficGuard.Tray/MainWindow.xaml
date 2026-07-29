@@ -4,24 +4,28 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Network Traffic Guard" Height="680" Width="1040"
-        MinHeight="560" MinWidth="860"
-        Background="#F4F6F8">
+        Title="Network Traffic Guard" Height="720" Width="1040"
+        MinHeight="620" MinWidth="900"
+        Background="#F3F5F7">
     <Window.Resources>
         <Style x:Key="PanelBorder" TargetType="Border">
             <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="#D8DEE6" />
+            <Setter Property="BorderBrush" Value="#D7DDE5" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="CornerRadius" Value="7" />
             <Setter Property="Padding" Value="16" />
         </Style>
+        <Style x:Key="MutedText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#64748B" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#1F2933" />
+            <Setter Property="Foreground" Value="#111827" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style TargetType="Button">
-            <Setter Property="MinWidth" Value="116" />
-            <Setter Property="Height" Value="34" />
+            <Setter Property="MinWidth" Value="104" />
+            <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="14,0" />
         </Style>
     </Window.Resources>
@@ -35,32 +39,66 @@
 
         <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,14">
             <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="Network Traffic Guard" FontSize="24" FontWeight="SemiBold" />
-                <TextBlock Text="Windows default route diagnostics" Foreground="#5B6777" Margin="0,3,0,0" />
+                <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding ActiveLineText}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="{Binding LastCheckedAt, StringFormat=Last checked: {0:yyyy-MM-dd HH:mm:ss}}"
-                           VerticalAlignment="Center" Foreground="#5B6777" Margin="0,0,14,0" />
-                <Button Content="Run Check" Command="{Binding RunCheckCommand}" />
+                <TextBlock Text="{Binding LastCheckedAt, StringFormat=更新: {0:yyyy-MM-dd HH:mm:ss}}"
+                           VerticalAlignment="Center" Style="{StaticResource MutedText}" Margin="0,0,14,0" />
+                <Button Content="更新" Command="{Binding RunCheckCommand}" />
             </StackPanel>
         </DockPanel>
 
-        <Border Grid.Row="1" Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="220" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Status" Foreground="#5B6777" />
-                    <TextBlock Text="{Binding StatusText}" FontSize="26" FontWeight="SemiBold" Margin="0,4,0,0" />
+        <Grid Grid.Row="1" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Wi-Fi" Style="{StaticResource MutedText}" />
+                    <TextBlock Grid.Row="1" Text="{Binding WifiDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                        <TextBlock Text="{Binding WifiStatusText}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="モバイルデータ通信（主回線）" Style="{StaticResource MutedText}" />
+                    <TextBlock Grid.Row="1" Text="{Binding MobileDataDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                        <TextBlock Text="{Binding MobileDataStatusText}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding MobileDataDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
+                <StackPanel>
+                    <TextBlock Text="選項" Style="{StaticResource MutedText}" />
+                    <TextBlock Text="{Binding StatusText}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <TextBlock Text="{Binding OptionsSummary}" Margin="0,10,0,0" />
+                    <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
                 </StackPanel>
-                <StackPanel Grid.Column="1">
-                    <TextBlock Text="{Binding StatusDetail}" FontSize="15" />
-                    <TextBlock Text="{Binding BestRouteText}" Foreground="#344054" Margin="0,10,0,0" />
-                </StackPanel>
-            </Grid>
-        </Border>
+            </Border>
+        </Grid>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -88,7 +126,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="" Binding="{Binding Role}" Width="58" />
                             <DataGridTextColumn Header="Prefix" Binding="{Binding DestinationPrefix}" Width="112" />
-                            <DataGridTextColumn Header="Next hop" Binding="{Binding NextHop}" Width="150" />
+                            <DataGridTextColumn Header="Next hop" Binding="{Binding NextHop}" Width="220" />
                             <DataGridTextColumn Header="Interface" Binding="{Binding Interface}" Width="*" />
                             <DataGridTextColumn Header="Route" Binding="{Binding RouteMetric}" Width="72" />
                             <DataGridTextColumn Header="IF" Binding="{Binding InterfaceMetric}" Width="72" />
@@ -101,16 +139,16 @@
             <StackPanel Grid.Column="2">
                 <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
                     <StackPanel>
-                        <TextBlock Text="Settings" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
-                        <TextBlock Text="{Binding SettingsSummary}" />
+                        <TextBlock Text="Status" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <TextBlock Text="{Binding StatusDetail}" />
+                        <TextBlock Text="{Binding BestRouteText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
-                        <TextBlock Text="Route Control" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
-                        <TextBlock Text="{Binding RouteControlText}" />
-                        <TextBlock Text="UI MVP always uses dry-run for route control." Foreground="#5B6777" Margin="0,12,0,0" />
+                        <TextBlock Text="設定" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <TextBlock Text="{Binding SettingsSummary}" />
                     </StackPanel>
                 </Border>
             </StackPanel>

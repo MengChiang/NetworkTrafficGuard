@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging.Abstractions;
+using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Policy;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
@@ -35,6 +36,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _routeControlText = "Dry-run route control is idle.";
 
     [ObservableProperty]
+    private string _wifiStatusText = "未確認";
+
+    [ObservableProperty]
+    private string _wifiDetailText = "Press Update to check Wi-Fi routing.";
+
+    [ObservableProperty]
+    private string _mobileDataStatusText = "未確認";
+
+    [ObservableProperty]
+    private string _mobileDataDetailText = "Press Update to check mobile data routing.";
+
+    [ObservableProperty]
+    private string _activeLineText = "未確認";
+
+    [ObservableProperty]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -65,9 +81,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IAsyncRelayCommand RunCheckCommand { get; }
 
     public string SettingsSummary =>
-        $"Wi-Fi {Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)} | " +
-        $"SIM {Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)} | " +
+        $"Wi-Fi {Settings.PrimaryWifiDisplayName} ({Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}) | " +
+        $"Mobile {Settings.SimDisplayName} / {Settings.SimCarrierName} ({Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}) | " +
         $"Mode {Settings.Mode} | Route changes {(Settings.EnableRouteChanges ? "enabled in config" : "disabled")}";
+
+    public string WifiDisplayName => Settings.PrimaryWifiDisplayName;
+
+    public string MobileDataDisplayName => Settings.SimDisplayName;
+
+    public string MobileDataCarrierName => Settings.SimCarrierName;
+
+    public string OptionsSummary =>
+        $"優先: Wi-Fi | SIM接管: {Settings.Mode} | Route changes: {(Settings.EnableRouteChanges ? "enabled" : "dry-run")}";
 
     partial void OnIsBusyChanged(bool value)
     {
@@ -89,11 +114,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var policyResult = _policyEngine.Evaluate(defaultRoutes, Settings);
 
             Routes = new ObservableCollection<RouteRowViewModel>(
-                orderedRoutes.Select(route => new RouteRowViewModel(route, route == bestRoute)));
+                orderedRoutes.Select(route => new RouteRowViewModel(route, route == bestRoute, Settings)));
 
             BestRouteText = bestRoute is null
                 ? "No default route found."
-                : $"{bestRoute.DestinationPrefix} via {bestRoute.NextHop} on {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex} (total metric {bestRoute.TotalMetric})";
+                : $"{bestRoute.DestinationPrefix} via {FormatNextHop(bestRoute.NextHop)} on {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex} (total metric {bestRoute.TotalMetric})";
+
+            UpdatePhoneSummary(orderedRoutes, bestRoute);
 
             StatusText = policyResult.RiskLevel.ToString();
             StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSim={policyResult.ShouldBlockSimRoute}";
@@ -131,12 +158,73 @@ public sealed partial class MainWindowViewModel : ObservableObject
             PrimaryWifiInterfaceIndex = source.PrimaryWifiInterfaceIndex,
             SimInterfaceAlias = source.SimInterfaceAlias,
             SimInterfaceIndex = source.SimInterfaceIndex,
+            PrimaryWifiDisplayName = source.PrimaryWifiDisplayName,
+            SimDisplayName = source.SimDisplayName,
+            SimCarrierName = source.SimCarrierName,
+            GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
             Mode = source.Mode,
             EnableRouteChanges = false,
             CheckIntervalSeconds = source.CheckIntervalSeconds,
             CultureName = source.CultureName,
             AllowedWifiSsids = [.. source.AllowedWifiSsids]
         };
+    }
+
+    private void UpdatePhoneSummary(
+        IReadOnlyList<DefaultRouteInfo> orderedRoutes,
+        DefaultRouteInfo? bestRoute)
+    {
+        var wifiRoute = orderedRoutes.FirstOrDefault(IsWifiRoute);
+        var mobileDataRoute = orderedRoutes.FirstOrDefault(IsMobileDataRoute);
+        var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
+        var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
+
+        WifiStatusText = isWifiActive ? "接続中" : wifiRoute is null ? "未接続" : "待機中";
+        WifiDetailText = wifiRoute is null
+            ? $"{Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}"
+            : $"{Settings.PrimaryWifiInterfaceAlias} #{wifiRoute.InterfaceIndex} ・ {FormatNextHop(wifiRoute.NextHop)}";
+
+        MobileDataStatusText = isMobileDataActive ? "使用中" : mobileDataRoute is null ? "未接続" : "待機中";
+        MobileDataDetailText = mobileDataRoute is null
+            ? $"{Settings.SimCarrierName} ・ {Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}"
+            : $"{Settings.SimCarrierName} ・ {FormatNextHop(mobileDataRoute.NextHop)} ・ {Settings.SimInterfaceAlias} #{mobileDataRoute.InterfaceIndex}";
+
+        ActiveLineText = bestRoute is null
+            ? "現在の主回線: なし"
+            : isMobileDataActive
+                ? $"現在の主回線: モバイルデータ通信 ({Settings.SimDisplayName})"
+                : isWifiActive
+                    ? $"現在の主回線: Wi-Fi ({Settings.PrimaryWifiDisplayName})"
+                    : $"現在の主回線: {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex}";
+    }
+
+    private bool IsWifiRoute(DefaultRouteInfo route)
+    {
+        if (Settings.PrimaryWifiInterfaceIndex is { } wifiInterfaceIndex
+            && route.InterfaceIndex == wifiInterfaceIndex)
+        {
+            return true;
+        }
+
+        return string.Equals(route.InterfaceAlias, Settings.PrimaryWifiInterfaceAlias, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsMobileDataRoute(DefaultRouteInfo route)
+    {
+        if (Settings.SimInterfaceIndex is { } simInterfaceIndex
+            && route.InterfaceIndex == simInterfaceIndex)
+        {
+            return true;
+        }
+
+        return string.Equals(route.InterfaceAlias, Settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string FormatNextHop(string nextHop)
+    {
+        return Settings.GatewayDisplayNames.TryGetValue(nextHop, out var displayName)
+            ? $"{displayName} ({nextHop})"
+            : nextHop;
     }
 
     private static string FormatIndex(int? interfaceIndex)

@@ -11,9 +11,17 @@ public sealed class NetworkGuardSettings
 
     public int? PrimaryWifiInterfaceIndex { get; set; }
 
+    public string PrimaryWifiDisplayName { get; set; } = "Wi-Fi";
+
     public string SimInterfaceAlias { get; set; } = "Ethernet";
 
     public int? SimInterfaceIndex { get; set; }
+
+    public string SimDisplayName { get; set; } = "Mobile Data";
+
+    public string SimCarrierName { get; set; } = string.Empty;
+
+    public Dictionary<string, string> GatewayDisplayNames { get; set; } = [];
 
     public GuardMode Mode { get; set; } = GuardMode.WarnOnly;
 
