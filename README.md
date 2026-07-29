@@ -1,192 +1,89 @@
-# Network Traffic Guard Plan
+# Network Traffic Guard
 
-English is the default documentation language for this project.
+A small Windows tray tool for watching the active network route, realtime traffic, and monthly usage. It is designed for PCs connected to more than one network, where one connection should be preferred and another connection may have limited data.
 
-Localized versions:
+Languages: [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
 
-- [Traditional Chinese](README.zh-TW.md)
-- [Simplified Chinese](README.zh-CN.md)
-- [Japanese](README.ja-JP.md)
+## Features
 
-## 1. Purpose
-
-Network Traffic Guard is a Windows resident application that helps prevent unexpected Internet usage through an expensive or limited backup network.
-
-The original use case is a PC connected to both:
-
-- Wi-Fi as the preferred Internet connection.
-- A wired network connected to a home router that may use limited data.
-
-When Wi-Fi disconnects, Windows may automatically switch the default Internet route to another available network. This app watches that routing state, shows which connection is active, displays live traffic, and alerts the user when selected routes exceed a threshold.
-
-## 2. Current Scope
-
-The current MVP focuses on local Windows monitoring and a WPF tray UI.
-
-Implemented:
-
-- Reads Windows default routes through PowerShell.
-- Detects the best default route by route metric and interface metric.
-- Shows the highest-priority Wi-Fi route and highest-priority non-Wi-Fi network interface.
-- Hides disconnected or disabled network interfaces from the status cards and traffic monitor.
-- Shows route priority in a compact table.
-- Allows reordering route priority and saving the order.
-- Allows route priority changes to be applied to Windows when enabled.
-- Allows Wi-Fi enable/disable commands from the settings menu when adapter changes are enabled.
-- Shows realtime traffic per selected route.
-- Supports multiple selected traffic monitors.
-- Supports alert checkboxes per route.
-- Shows Windows tray notifications when monitored alert traffic exceeds the configured threshold.
-- Shows tray tooltip text with the primary connection and current traffic rate.
-- Provides custom display-name settings for detected networks.
-- Provides separate alert settings.
-- Supports UI languages: English, Traditional Chinese, Simplified Chinese, and Japanese.
-
-Not implemented yet:
-
-- Monthly data usage accounting.
-- Temporary allow rules, such as 10 minutes or until restart.
-- A full Windows Service deployment flow.
+- Tray UI for Windows network status.
 - Native Windows IP Helper API route reading.
-- Wi-Fi SSID allow-list enforcement.
-- Installer and auto-start registration.
+- Realtime per-interface traffic monitor.
+- Monthly traffic usage accounting.
+- Route priority ordering with optional Windows apply.
+- Wi-Fi enable and disable command from the settings menu.
+- Traffic threshold alerts through Windows notifications.
+- Custom display names for detected networks and gateways.
+- English, Traditional Chinese, Simplified Chinese, and Japanese UI.
+- Windows Service publish, install, uninstall, and startup scripts.
+- Inno Setup installer script.
 
-## 3. Terminology
+## Requirements
 
-The app uses generic network terminology instead of assuming the backup connection is mobile data.
+- Windows 10 or later.
+- .NET 10 SDK for development.
+- Administrator permission for Windows Service installation and system route or adapter changes.
+- Inno Setup 6 if you want to build the installer.
 
-- Primary Wi-Fi: the preferred Wi-Fi connection.
-- Secondary network: a configured backup or non-preferred network interface.
-- Network interface: any detected Windows network interface.
-- Gateway: the next-hop address used by a default route.
-- Display name: a user-defined name shown in the UI.
-- Alert route: a route selected for traffic-threshold notifications.
-
-System messages, logs, and code identifiers are written in English. UI text is localized.
-
-## 4. Project Structure
-
-```text
-NetworkTrafficGuard.Core
-  Domain models, settings, route selection, and policy logic.
-
-NetworkTrafficGuard.Windows
-  Windows-specific PowerShell route and adapter controllers.
-
-NetworkTrafficGuard.Tray
-  WPF tray application, localized UI, traffic monitor, settings windows, and notifications.
-
-NetworkTrafficGuard.Service
-  Worker-service prototype for background monitoring.
-
-NetworkTrafficGuard.Tests
-  Unit tests for policy and Windows command generation behavior.
-```
-
-## 5. Settings
-
-Example:
-
-```json
-{
-  "PrimaryWifiInterfaceAlias": "Wi-Fi",
-  "PrimaryWifiInterfaceIndex": null,
-  "PrimaryWifiDisplayName": "Home Wi-Fi",
-  "SecondaryInterfaceAlias": "Ethernet",
-  "SecondaryInterfaceIndex": null,
-  "SecondaryDisplayName": "Backup Router",
-  "SecondaryProviderName": "",
-  "GatewayDisplayNames": {
-    "192.168.100.1": "Backup Router"
-  },
-  "RoutePriorities": {},
-  "MonitoredRouteKeys": [],
-  "AlertRouteKeys": [],
-  "AlertThresholdKbps": 100,
-  "Mode": "WarnOnly",
-  "EnableRouteChanges": false,
-  "EnableAdapterChanges": false,
-  "CheckIntervalSeconds": 3,
-  "CultureName": "en-US",
-  "AllowedWifiSsids": []
-}
-```
-
-Important flags:
-
-- `EnableRouteChanges`: when `false`, route changes are simulation-only.
-- `EnableAdapterChanges`: when `false`, Wi-Fi adapter enable/disable commands are simulation-only.
-- `AlertThresholdKbps`: threshold for route traffic notifications.
-- `CultureName`: UI language, such as `en-US`, `zh-TW`, `zh-CN`, or `ja-JP`.
-
-## 6. UI Behavior
-
-Main window:
-
-- Top cards show Wi-Fi and the highest-priority non-Wi-Fi network interface.
-- The route table shows visible routes, alert selection, priority, network name, gateway, and type.
-- Up and down buttons reorder route priority.
-- Realtime traffic shows one card per selected route.
-
-Custom name settings:
-
-- Detected network, gateway, and type are read-only columns.
-- Display name is the editable column.
-- Saved names are read from settings when the window is opened again.
-
-Alert settings:
-
-- Alert threshold is configured in a separate settings window.
-- Per-route alert selection remains in the main route table.
-
-## 7. Development Workflow
-
-Build:
+## Development
 
 ```powershell
 dotnet build .\NetworkTrafficGuard.slnx
-```
-
-Test:
-
-```powershell
 dotnet test .\NetworkTrafficGuard.Tests\NetworkTrafficGuard.Tests.csproj
-```
-
-Run tray app:
-
-```powershell
 dotnet run --project .\NetworkTrafficGuard.Tray\NetworkTrafficGuard.Tray.csproj
 ```
 
-If the tray app is already running, close it before building because Windows may lock output DLLs.
+Close the tray app before rebuilding if Windows locks the output files.
 
-## 8. Testing Notes
+## Windows Service
 
-Existing tests cover:
+Publish and install the service:
 
-- Wi-Fi route preferred policy behavior.
-- Secondary route active policy behavior.
-- Block mode policy result.
-- No-default-route behavior.
-- Secondary interface matching by index.
-- English system policy messages.
-- PowerShell route-control dry-run behavior.
+```powershell
+.\tools\publish-service.ps1
+Start-Process powershell -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File `"$PWD\tools\install-service.ps1`""
+```
 
-Manual testing should cover:
+Uninstall the service:
 
-- Disable and re-enable Wi-Fi from Windows and verify UI refresh.
-- Add or remove a network adapter and verify the top cards update.
-- Rename a detected network, save, reopen settings, and verify the saved name appears.
-- Select multiple traffic monitors and verify all selected routes show traffic cards.
-- Enable an alert route, exceed the threshold, and verify tray notification behavior.
+```powershell
+Start-Process powershell -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File `"$PWD\tools\uninstall-service.ps1`""
+```
 
-## 9. Next Steps
+Run one service check locally:
 
-Recommended next development steps:
+```powershell
+dotnet run --project .\NetworkTrafficGuard.Service\NetworkTrafficGuard.Service.csproj -- RunOnce=true
+```
 
-1. Add a clearer distinction between interface display names and gateway display names.
-2. Add persistent monthly traffic accounting.
-3. Add installer and startup registration.
-4. Move long-running monitoring into the Windows Service.
-5. Replace PowerShell route reads with native Windows APIs when stability requires it.
+## Tray Startup
+
+Publish and register the tray app for the current Windows user:
+
+```powershell
+.\tools\publish-tray.ps1
+.\tools\register-tray-startup.ps1
+```
+
+Remove startup registration:
+
+```powershell
+.\tools\unregister-tray-startup.ps1
+```
+
+## Installer
+
+Build release files first:
+
+```powershell
+.\tools\publish-tray.ps1
+.\tools\publish-service.ps1
+```
+
+Then compile `installer\NetworkTrafficGuard.iss` with Inno Setup.
+
+## Data
+
+- App settings: project `appsettings.json` files during development.
+- Monthly usage: `%LOCALAPPDATA%\NetworkTrafficGuard\traffic-usage.json`.
+- Service name: `NetworkTrafficGuard`.

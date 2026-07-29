@@ -1,15 +1,18 @@
 using System.Collections.ObjectModel;
 using System.Net.NetworkInformation;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetworkTrafficGuard.Core.Adapters;
+using NetworkTrafficGuard.Core.Localization;
 using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Policy;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
+using NetworkTrafficGuard.Core.Traffic;
 using NetworkTrafficGuard.Tray.Localization;
 using NetworkTrafficGuard.Tray.Settings;
 using NetworkTrafficGuard.Windows;
@@ -22,6 +25,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IRouteController _routeController;
     private readonly IAdapterController _adapterController;
     private readonly INetworkPolicyEngine _policyEngine;
+    private readonly MonthlyTrafficUsageStore _trafficUsageStore = new();
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly DispatcherTimer _trafficTimer = new();
     private readonly DispatcherTimer _adapterStatusTimer = new();
@@ -123,7 +127,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel()
         : this(
             TraySettingsLoader.Load(),
-            new PowerShellRouteReader(NullLogger<PowerShellRouteReader>.Instance),
+            new NativeIpHelperRouteReader(NullLogger<NativeIpHelperRouteReader>.Instance),
             new PowerShellRouteController(NullLogger<PowerShellRouteController>.Instance),
             new PowerShellAdapterController(NullLogger<PowerShellAdapterController>.Instance),
             new NetworkPolicyEngine())
@@ -419,7 +423,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _primaryTrafficMonitor = new TrafficMonitorViewModel(
+        _primaryTrafficMonitor = CreateTrafficMonitor(
             key,
             bestRoute.InterfaceIndex,
             _primaryTrafficName,
@@ -1091,13 +1095,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             : $"{_primaryTrafficName}  {rateText}";
     }
 
-    private static double? SampleTraffic(TrafficMonitorViewModel monitor)
+    private double? SampleTraffic(TrafficMonitorViewModel monitor)
     {
         var networkInterface = FindNetworkInterface(monitor.InterfaceIndex);
 
         if (networkInterface is null)
         {
-            monitor.RateText = "Network adapter not found";
+            monitor.RateText = GetNetworkAdapterNotFoundText();
             return null;
         }
 
@@ -1125,9 +1129,75 @@ public sealed partial class MainWindowViewModel : ObservableObject
         monitor.LastBytesSent = bytesSent;
         monitor.LastSampledAt = now;
 
-        monitor.RateText = $"↓ {FormatBitsPerSecond(rxBps)} / ↑ {FormatBitsPerSecond(txBps)}";
+        monitor.RateText = $"\u2193 {FormatBitsPerSecond(rxBps)} / \u2191 {FormatBitsPerSecond(txBps)}";
+        UpdateMonthlyUsage(monitor, bytesReceived, bytesSent, now);
         monitor.AddSample(totalBps);
         return totalBps;
+    }
+
+    private void UpdateMonthlyUsage(
+        TrafficMonitorViewModel monitor,
+        long bytesReceived,
+        long bytesSent,
+        DateTimeOffset sampledAt)
+    {
+        try
+        {
+            var entry = _trafficUsageStore.RecordSample(
+                monitor.Key,
+                monitor.InterfaceIndex,
+                monitor.Detail,
+                monitor.Title,
+                bytesReceived,
+                bytesSent,
+                sampledAt);
+
+            monitor.MonthlyUsageText = FormatMonthlyUsageText(entry.BytesReceived, entry.BytesSent);
+        }
+        catch (IOException)
+        {
+            monitor.MonthlyUsageText = GetMonthlyUsageUnavailableText();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            monitor.MonthlyUsageText = GetMonthlyUsageUnavailableText();
+        }
+    }
+
+    private string FormatMonthlyUsageText(long bytesReceived, long bytesSent)
+    {
+        var received = MonthlyTrafficUsageStore.FormatBytes(bytesReceived);
+        var sent = MonthlyTrafficUsageStore.FormatBytes(bytesSent);
+
+        return SupportedCultures.GetCultureOrDefault(Settings.CultureName).Name switch
+        {
+            SupportedCultures.SimplifiedChinese => $"\u672c\u6708\uff1a\u2193 {received} / \u2191 {sent}",
+            SupportedCultures.Japanese => $"\u4eca\u6708: \u2193 {received} / \u2191 {sent}",
+            SupportedCultures.English => $"This month: \u2193 {received} / \u2191 {sent}",
+            _ => $"\u672c\u6708\uff1a\u2193 {received} / \u2191 {sent}"
+        };
+    }
+
+    private string GetMonthlyUsageUnavailableText()
+    {
+        return SupportedCultures.GetCultureOrDefault(Settings.CultureName).Name switch
+        {
+            SupportedCultures.SimplifiedChinese => "\u672c\u6708\uff1a\u65e0\u6cd5\u53d6\u5f97",
+            SupportedCultures.Japanese => "\u4eca\u6708: \u53d6\u5f97\u4e0d\u53ef",
+            SupportedCultures.English => "This month: unavailable",
+            _ => "\u672c\u6708\uff1a\u7121\u6cd5\u53d6\u5f97"
+        };
+    }
+
+    private string GetNetworkAdapterNotFoundText()
+    {
+        return SupportedCultures.GetCultureOrDefault(Settings.CultureName).Name switch
+        {
+            SupportedCultures.SimplifiedChinese => "\u672a\u68c0\u6d4b\u5230\u7f51\u7edc\u63a5\u53e3",
+            SupportedCultures.Japanese => "\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u30a4\u30f3\u30bf\u30fc\u30d5\u30a7\u30a4\u30b9\u672a\u691c\u51fa",
+            SupportedCultures.English => "Network adapter not found",
+            _ => "\u672a\u5075\u6e2c\u5230\u7db2\u8def\u4ecb\u9762"
+        };
     }
 
     private void SampleAlertTraffic()
@@ -1143,7 +1213,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             if (!_alertTrafficMonitors.TryGetValue(routeKey, out var monitor))
             {
-                monitor = new TrafficMonitorViewModel(
+                monitor = CreateTrafficMonitor(
                     routeKey,
                     route.InterfaceIndex,
                     route.NetworkName,
@@ -1224,7 +1294,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             nextMonitors.Add(existingByKey.TryGetValue(routeKey, out var existing)
                 ? existing
-                : new TrafficMonitorViewModel(
+                : CreateTrafficMonitor(
                     routeKey,
                     route.InterfaceIndex,
                     route.NetworkName,
@@ -1232,6 +1302,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         TrafficMonitors = nextMonitors;
+    }
+
+    private TrafficMonitorViewModel CreateTrafficMonitor(
+        string key,
+        int interfaceIndex,
+        string title,
+        string detail)
+    {
+        var monitor = new TrafficMonitorViewModel(key, interfaceIndex, title, detail)
+        {
+            MonthlyUsageText = FormatMonthlyUsageText(0, 0)
+        };
+
+        return monitor;
     }
 
     private void SyncAlertTrafficMonitors()

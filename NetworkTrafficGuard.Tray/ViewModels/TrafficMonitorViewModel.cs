@@ -39,7 +39,10 @@ public sealed partial class TrafficMonitorViewModel(
     public DateTimeOffset? LastSampledAt { get; set; }
 
     [ObservableProperty]
-    private string _rateText = "↓ 0 bps / ↑ 0 bps";
+    private string _rateText = "\u2193 0 bps / \u2191 0 bps";
+
+    [ObservableProperty]
+    private string _monthlyUsageText = string.Empty;
 
     [ObservableProperty]
     private string _sparkline = EmptySparkline;
