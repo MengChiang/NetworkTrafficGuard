@@ -34,12 +34,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly HashSet<string> _alertRouteKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TrafficMonitorViewModel> _alertTrafficMonitors = new(StringComparer.OrdinalIgnoreCase);
     private bool _isWifiRouteAvailable;
-    private bool _isMobileDataRouteAvailable;
     private string? _wifiRouteKey;
     private DateTimeOffset? _lastTrafficAlertAt;
     private bool _networkRefreshQueued;
     private bool _adapterStatusRefreshRunning;
     private string? _lastWifiAdapterStateKey;
+    private string _wifiDisplayNameText = string.Empty;
+    private string _secondaryConnectionDisplayNameText = string.Empty;
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -72,10 +73,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _adapterControlStatusText = string.Empty;
 
     [ObservableProperty]
-    private string _mobileDataStatusText = UiTextProvider.Get(null).Unknown;
+    private string _secondaryConnectionStatusText = UiTextProvider.Get(null).Unknown;
 
     [ObservableProperty]
-    private string _mobileDataDetailText = string.Empty;
+    private string _secondaryConnectionDetailText = string.Empty;
 
     [ObservableProperty]
     private string _activeLineText = UiTextProvider.Get(null).Unknown;
@@ -194,19 +195,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         $"回線 {Settings.SimDisplayName} / {Settings.SimCarrierName} ({Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}) | " +
         $"Mode {Settings.Mode} | Route changes {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter changes {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
 
-    public string WifiDisplayName => _isWifiRouteAvailable ? Settings.PrimaryWifiDisplayName : string.Empty;
+    public string WifiDisplayName => _wifiDisplayNameText;
 
     public UiText Texts => UiTextProvider.Get(Settings.CultureName);
 
-    public string RouterLineLabel => Texts.SimRouterLineLabel;
+    public string SecondaryConnectionLabel => Texts.SecondaryConnectionLabel;
 
     public Visibility RouteControlVisibility => string.IsNullOrWhiteSpace(RouteControlText)
         ? Visibility.Collapsed
         : Visibility.Visible;
 
-    public string RouterDisplayName => _isMobileDataRouteAvailable ? Settings.SimDisplayName : string.Empty;
+    public string SecondaryConnectionDisplayName => _secondaryConnectionDisplayNameText;
 
-    public string MobileDataCarrierName => Settings.SimCarrierName;
+    public string SecondaryConnectionCarrierName => Settings.SimCarrierName;
 
     public string OptionsSummary =>
         $"Wi-Fi | Route {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
@@ -352,17 +353,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         AdapterStatusResult wifiAdapterStatus)
     {
         var wifiRoute = orderedRoutes.FirstOrDefault(IsWifiRoute);
-        var mobileDataRoute = orderedRoutes.FirstOrDefault(IsMobileDataRoute);
-        var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
-        var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
+        var otherRoute = orderedRoutes.FirstOrDefault(route => !IsWifiRoute(route));
         _isWifiRouteAvailable = wifiRoute is not null && IsWifiAdapterConnected(wifiAdapterStatus);
-        _isMobileDataRouteAvailable = mobileDataRoute is not null;
         _wifiRouteKey = wifiRoute is null
             ? null
             : CreateRouteKey(wifiRoute.InterfaceIndex, wifiRoute.NextHop);
         _lastWifiAdapterStateKey = CreateAdapterStatusKey(wifiAdapterStatus);
+        _wifiDisplayNameText = wifiRoute is null ? string.Empty : RouteRowViewModel.FormatNetworkName(wifiRoute, Settings);
+        _secondaryConnectionDisplayNameText = otherRoute is null ? string.Empty : RouteRowViewModel.FormatNetworkName(otherRoute, Settings);
         OnPropertyChanged(nameof(WifiDisplayName));
-        OnPropertyChanged(nameof(RouterDisplayName));
+        OnPropertyChanged(nameof(SecondaryConnectionDisplayName));
 
         if (!_isSwitchingWifiAdapter)
         {
@@ -372,20 +372,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         WifiDetailText = FormatWifiDetailText(wifiRoute);
 
-        MobileDataStatusText = mobileDataRoute is null ? Texts.NotConnected : Texts.InUse;
-        MobileDataDetailText = mobileDataRoute is null
+        SecondaryConnectionStatusText = otherRoute is null ? Texts.NotConnected : Texts.InUse;
+        SecondaryConnectionDetailText = otherRoute is null
             ? string.Empty
-            : FormatNextHop(mobileDataRoute.NextHop);
+            : FormatNextHop(otherRoute.NextHop);
 
         ActiveLineText = bestRoute is null
             ? Texts.NoPrimaryLine
-            : isMobileDataActive
-                ? string.Format(Texts.PrimaryLineFormat, Settings.SimDisplayName)
-                : isWifiActive
-                    ? string.Format(Texts.PrimaryLineFormat, Settings.PrimaryWifiDisplayName)
-                    : string.Format(Texts.PrimaryLineFormat, bestRoute.InterfaceAlias);
+            : string.Format(Texts.PrimaryLineFormat, RouteRowViewModel.FormatNetworkName(bestRoute, Settings));
 
-        UpdatePrimaryTrafficMonitor(bestRoute, isMobileDataActive, isWifiActive);
+        UpdatePrimaryTrafficMonitor(bestRoute);
     }
 
     private IReadOnlyList<DefaultRouteInfo> FilterUnavailableRoutes(
@@ -400,9 +396,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     private void UpdatePrimaryTrafficMonitor(
-        DefaultRouteInfo? bestRoute,
-        bool isMobileDataActive,
-        bool isWifiActive)
+        DefaultRouteInfo? bestRoute)
     {
         if (bestRoute is null)
         {
@@ -412,11 +406,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _primaryTrafficName = isMobileDataActive
-            ? Settings.SimDisplayName
-            : isWifiActive
-                ? Settings.PrimaryWifiDisplayName
-                : bestRoute.InterfaceAlias;
+        _primaryTrafficName = RouteRowViewModel.FormatNetworkName(bestRoute, Settings);
 
         var key = CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.NextHop);
 
@@ -529,17 +519,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         return string.Equals(route.InterfaceAlias, Settings.PrimaryWifiInterfaceAlias, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool IsMobileDataRoute(DefaultRouteInfo route)
-    {
-        if (Settings.SimInterfaceIndex is { } simInterfaceIndex
-            && route.InterfaceIndex == simInterfaceIndex)
-        {
-            return true;
-        }
-
-        return string.Equals(route.InterfaceAlias, Settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase);
     }
 
     private string FormatNextHop(string nextHop)
@@ -914,18 +893,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RouteControlText = Texts.NameSavedNotice;
         OnPropertyChanged(nameof(SettingsSummary));
         OnPropertyChanged(nameof(WifiDisplayName));
-        OnPropertyChanged(nameof(RouterDisplayName));
+        OnPropertyChanged(nameof(SecondaryConnectionDisplayName));
     }
 
     private void RefreshDisplayProperties()
     {
         OnPropertyChanged(nameof(SettingsSummary));
         OnPropertyChanged(nameof(WifiDisplayName));
-        OnPropertyChanged(nameof(RouterDisplayName));
-        OnPropertyChanged(nameof(MobileDataCarrierName));
+        OnPropertyChanged(nameof(SecondaryConnectionDisplayName));
+        OnPropertyChanged(nameof(SecondaryConnectionCarrierName));
         OnPropertyChanged(nameof(OptionsSummary));
         OnPropertyChanged(nameof(Texts));
-        OnPropertyChanged(nameof(RouterLineLabel));
+        OnPropertyChanged(nameof(SecondaryConnectionLabel));
         OnPropertyChanged(nameof(EnableWifiMenuText));
         OnPropertyChanged(nameof(DisableWifiMenuText));
     }

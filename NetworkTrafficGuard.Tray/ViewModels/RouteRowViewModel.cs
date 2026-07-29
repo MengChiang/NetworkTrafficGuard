@@ -39,14 +39,14 @@ public sealed partial class RouteRowViewModel(
     [ObservableProperty]
     private bool _isAlertEnabled = isAlertEnabled;
 
-    private static string FormatNextHop(string nextHop, NetworkGuardSettings settings)
+    public static string FormatNextHop(string nextHop, NetworkGuardSettings settings)
     {
         return settings.GatewayDisplayNames.TryGetValue(nextHop, out var displayName)
             ? $"{displayName} ({nextHop})"
             : nextHop;
     }
 
-    private static string FormatNetworkName(DefaultRouteInfo route, NetworkGuardSettings settings)
+    public static string FormatNetworkName(DefaultRouteInfo route, NetworkGuardSettings settings)
     {
         if (settings.PrimaryWifiInterfaceIndex == route.InterfaceIndex
             || string.Equals(route.InterfaceAlias, settings.PrimaryWifiInterfaceAlias, StringComparison.OrdinalIgnoreCase))

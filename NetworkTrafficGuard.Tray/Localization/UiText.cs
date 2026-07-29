@@ -12,7 +12,7 @@ public sealed record UiText
 
     public required string WifiLabel { get; init; }
 
-    public required string SimRouterLineLabel { get; init; }
+    public required string SecondaryConnectionLabel { get; init; }
 
     public required string PriorityTitle { get; init; }
 

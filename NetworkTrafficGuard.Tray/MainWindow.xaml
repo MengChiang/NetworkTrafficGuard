@@ -155,16 +155,16 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconLucide Kind="Router" Width="20" Height="20" Foreground="#2563EB" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding RouterLineLabel}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SecondaryConnectionLabel}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                         </StackPanel>
-                        <TextBlock Text="{Binding RouterDisplayName}" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding SecondaryConnectionDisplayName}" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,0" />
                         <Grid Margin="0,4,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding MobileDataStatusText}" FontWeight="SemiBold" Margin="0,0,10,0" />
-                            <TextBlock Grid.Column="1" Text="{Binding MobileDataDetailText}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="0" Text="{Binding SecondaryConnectionStatusText}" FontWeight="SemiBold" Margin="0,0,10,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding SecondaryConnectionDetailText}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
                         </Grid>
                     </StackPanel>
                 </Border>
