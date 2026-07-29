@@ -59,29 +59,9 @@
                 <MenuItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <iconPacks:PackIconLucide Kind="Settings" Width="16" Height="16" Margin="0,0,8,0" />
-                        <TextBlock Text="設定" />
+                        <TextBlock Text="{Binding Texts.Settings}" />
                     </StackPanel>
                 </MenuItem.Header>
-            </MenuItem>
-            <MenuItem Header="Wi-Fi">
-                <MenuItem Command="{Binding EnableWifiCommand}">
-                    <MenuItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <iconPacks:PackIconLucide Kind="Wifi" Width="16" Height="16" Margin="0,0,8,0" />
-                            <TextBlock Text="Wi-Fi 開啟" />
-                        </StackPanel>
-                    </MenuItem.Header>
-                </MenuItem>
-                <MenuItem Command="{Binding DisableWifiCommand}">
-                    <MenuItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <iconPacks:PackIconLucide Kind="WifiOff" Width="16" Height="16" Margin="0,0,8,0" />
-                            <TextBlock Text="Wi-Fi 關閉" />
-                        </StackPanel>
-                    </MenuItem.Header>
-                </MenuItem>
-                <Separator />
-                <MenuItem Header="{Binding AdapterControlStatusText}" IsEnabled="False" />
             </MenuItem>
         </Menu>
 
@@ -96,14 +76,8 @@
                 <StackPanel DockPanel.Dock="Left">
                     <StackPanel Orientation="Horizontal">
                         <iconPacks:PackIconLucide Kind="Activity" Width="30" Height="30" Foreground="#2563EB" Margin="0,2,10,0" />
-                        <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Texts.AppTitle}" FontSize="30" FontWeight="SemiBold" />
                     </StackPanel>
-                    <TextBlock Text="{Binding ActiveLineText}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
-                </StackPanel>
-                <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <TextBlock Text="自動更新" FontWeight="SemiBold" HorizontalAlignment="Right" />
-                    <TextBlock Text="{Binding LastCheckedAt, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"
-                               Style="{StaticResource MutedText}" HorizontalAlignment="Right" />
                 </StackPanel>
             </DockPanel>
 
@@ -124,7 +98,7 @@
                         <StackPanel Grid.Column="0">
                             <StackPanel Orientation="Horizontal">
                                 <iconPacks:PackIconLucide Kind="Wifi" Width="20" Height="20" Foreground="#2563EB" Margin="0,0,8,0" />
-                                <TextBlock Text="Wi-Fi" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Texts.WifiLabel}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                             </StackPanel>
                             <TextBlock Text="{Binding WifiDisplayName}" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,0" />
                             <Grid Margin="0,4,0,0">
@@ -135,10 +109,6 @@
                                 <TextBlock Grid.Column="0" Text="{Binding WifiStatusText}" FontWeight="SemiBold" Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
                             </Grid>
-                            <TextBlock Text="{Binding AdapterControlStatusText}"
-                                       Style="{StaticResource MutedText}"
-                                       Margin="0,3,0,0"
-                                       TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
                         <ToggleButton Grid.Column="1"
@@ -149,7 +119,7 @@
                                       VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal">
                                 <iconPacks:PackIconLucide Kind="Wifi" Width="15" Height="15" Margin="0,0,6,0" />
-                                <TextBlock Text="Wi-Fi" />
+                                <TextBlock Text="{Binding Texts.WifiLabel}" />
                             </StackPanel>
                         </ToggleButton>
                     </Grid>
@@ -189,18 +159,18 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <DockPanel Margin="0,0,0,12">
-                            <TextBlock DockPanel.Dock="Left" Text="使用優先順序" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Texts.PriorityTitle}" FontSize="17" FontWeight="SemiBold" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button Command="{Binding MoveRouteUpCommand}" Margin="0,0,8,0">
                                     <StackPanel Orientation="Horizontal">
                                         <iconPacks:PackIconLucide Kind="ArrowUp" Width="15" Height="15" Margin="0,0,6,0" />
-                                        <TextBlock Text="上移" />
+                                        <TextBlock Text="{Binding Texts.MoveUp}" />
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding MoveRouteDownCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <iconPacks:PackIconLucide Kind="ArrowDown" Width="15" Height="15" Margin="0,0,6,0" />
-                                        <TextBlock Text="下移" />
+                                        <TextBlock Text="{Binding Texts.MoveDown}" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -216,7 +186,10 @@
                                   GridLinesVisibility="Horizontal"
                                   RowHeaderWidth="0">
                             <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="顯示" Width="58">
+                                <DataGridTemplateColumn Width="58">
+                                    <DataGridTemplateColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.ShowColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTemplateColumn.Header>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <CheckBox IsChecked="{Binding IsMonitored, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -227,11 +200,31 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="優先" Binding="{Binding Priority}" Width="56" />
-                                <DataGridTextColumn Header="網路" Binding="{Binding NetworkName}" Width="190" />
-                                <DataGridTextColumn Header="Gateway" Binding="{Binding Gateway}" Width="260" />
-                                <DataGridTextColumn Header="Interface" Binding="{Binding Interface}" Width="*" />
-                                <DataGridTextColumn Header="Type" Binding="{Binding AddressFamily}" Width="72" />
+                                <DataGridTextColumn Binding="{Binding Priority}" Width="56">
+                                    <DataGridTextColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.PriorityColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTextColumn.Header>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Binding="{Binding NetworkName}" Width="190">
+                                    <DataGridTextColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.NetworkColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTextColumn.Header>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Binding="{Binding Gateway}" Width="260">
+                                    <DataGridTextColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.GatewayColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTextColumn.Header>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Binding="{Binding Interface}" Width="*">
+                                    <DataGridTextColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.InterfaceColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTextColumn.Header>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Binding="{Binding AddressFamily}" Width="72">
+                                    <DataGridTextColumn.Header>
+                                        <TextBlock Text="{Binding DataContext.Texts.TypeColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                    </DataGridTextColumn.Header>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                         <TextBlock Grid.Row="2"
@@ -245,7 +238,7 @@
                     <DockPanel LastChildFill="True">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
                             <iconPacks:PackIconLucide Kind="Activity" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
-                            <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Texts.RealtimeTraffic}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
 
                         <ScrollViewer VerticalScrollBarVisibility="Auto">

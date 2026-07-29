@@ -1,14 +1,17 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using NetworkTrafficGuard.Core.Settings;
+using NetworkTrafficGuard.Tray.Localization;
 using NetworkTrafficGuard.Tray.Settings;
 using NetworkTrafficGuard.Tray.ViewModels;
 
 namespace NetworkTrafficGuard.Tray;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : Window, INotifyPropertyChanged
 {
     private readonly NetworkGuardSettings _settings;
+    private string _selectedCultureName = string.Empty;
 
     public SettingsWindow(
         NetworkGuardSettings settings,
@@ -22,10 +25,33 @@ public partial class SettingsWindow : Window
                 .Select(group => new NetworkNameMappingRowViewModel(group.First())));
         EnableAdapterChanges = _settings.EnableAdapterChanges;
         EnableRouteChanges = _settings.EnableRouteChanges;
+        _selectedCultureName = _settings.CultureName;
         DataContext = this;
     }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public ObservableCollection<NetworkNameMappingRowViewModel> Rows { get; }
+
+    public IReadOnlyList<UiCultureOption> CultureOptions => UiTextProvider.CultureOptions;
+
+    public UiText Texts => UiTextProvider.Get(SelectedCultureName);
+
+    public string SelectedCultureName
+    {
+        get => _selectedCultureName;
+        set
+        {
+            if (string.Equals(_selectedCultureName, value, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _selectedCultureName = value;
+            OnPropertyChanged(nameof(SelectedCultureName));
+            OnPropertyChanged(nameof(Texts));
+        }
+    }
 
     public bool EnableAdapterChanges { get; set; }
 
@@ -61,6 +87,7 @@ public partial class SettingsWindow : Window
 
         _settings.EnableAdapterChanges = EnableAdapterChanges;
         _settings.EnableRouteChanges = EnableRouteChanges;
+        _settings.CultureName = SelectedCultureName;
 
         TraySettingsLoader.Save(_settings);
         DialogResult = true;
@@ -71,5 +98,10 @@ public partial class SettingsWindow : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

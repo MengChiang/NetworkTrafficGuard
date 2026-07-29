@@ -28,7 +28,7 @@ public sealed partial class RouteRowViewModel(
 
     public string Gateway { get; } = FormatNextHop(route.NextHop, settings);
 
-    public string Interface { get; } = $"{route.InterfaceAlias} #{route.InterfaceIndex}";
+    public string Interface { get; } = $"#{route.InterfaceIndex}";
 
     public string AddressFamily { get; } = route.DestinationPrefix == "::/0" ? "IPv6" : "IPv4";
 

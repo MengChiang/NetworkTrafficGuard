@@ -10,6 +10,7 @@ using NetworkTrafficGuard.Core.Models;
 using NetworkTrafficGuard.Core.Policy;
 using NetworkTrafficGuard.Core.Routes;
 using NetworkTrafficGuard.Core.Settings;
+using NetworkTrafficGuard.Tray.Localization;
 using NetworkTrafficGuard.Tray.Settings;
 using NetworkTrafficGuard.Windows;
 
@@ -47,25 +48,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _bestRouteText = "Not checked yet";
 
     [ObservableProperty]
-    private string _routeControlText = "優先度調整待機中。";
+    private string _routeControlText = UiTextProvider.Get(null).RouteIdle;
 
     [ObservableProperty]
-    private string _wifiStatusText = "未確認";
+    private string _wifiStatusText = UiTextProvider.Get(null).Unknown;
 
     [ObservableProperty]
-    private string _wifiDetailText = "Press Update to check Wi-Fi routing.";
+    private string _wifiDetailText = string.Empty;
 
     [ObservableProperty]
     private string _adapterControlStatusText = string.Empty;
 
     [ObservableProperty]
-    private string _mobileDataStatusText = "未確認";
+    private string _mobileDataStatusText = UiTextProvider.Get(null).Unknown;
 
     [ObservableProperty]
-    private string _mobileDataDetailText = "Press Update to check mobile data routing.";
+    private string _mobileDataDetailText = string.Empty;
 
     [ObservableProperty]
-    private string _activeLineText = "未確認";
+    private string _activeLineText = UiTextProvider.Get(null).Unknown;
 
     [ObservableProperty]
     private ObservableCollection<TrafficMonitorViewModel> _trafficMonitors = [];
@@ -165,18 +166,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string SettingsSummary =>
         $"Wi-Fi {Settings.PrimaryWifiDisplayName} ({Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}) | " +
         $"回線 {Settings.SimDisplayName} / {Settings.SimCarrierName} ({Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}) | " +
-        $"Mode {Settings.Mode} | Route changes {(Settings.EnableRouteChanges ? "enabled" : "dry-run")} | Adapter changes {(Settings.EnableAdapterChanges ? "enabled" : "dry-run")}";
+        $"Mode {Settings.Mode} | Route changes {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter changes {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
 
     public string WifiDisplayName => Settings.PrimaryWifiDisplayName;
 
-    public string RouterLineLabel => "SIMルーター回線";
+    public UiText Texts => UiTextProvider.Get(Settings.CultureName);
+
+    public string RouterLineLabel => Texts.SimRouterLineLabel;
 
     public string RouterDisplayName => Settings.SimDisplayName;
 
     public string MobileDataCarrierName => Settings.SimCarrierName;
 
     public string OptionsSummary =>
-        $"優先: Wi-Fi | SIM接管: {Settings.Mode} | Route: {(Settings.EnableRouteChanges ? "enabled" : "dry-run")} | Adapter: {(Settings.EnableAdapterChanges ? "enabled" : "dry-run")}";
+        $"Wi-Fi | Route {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
 
     partial void OnIsBusyChanged(bool value)
     {
@@ -316,18 +319,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         WifiDetailText = FormatWifiDetailText(wifiAdapterStatus, wifiRoute);
 
-        MobileDataStatusText = isMobileDataActive ? "使用中" : mobileDataRoute is null ? "未接続" : "可用";
+        MobileDataStatusText = isMobileDataActive ? Texts.InUse : mobileDataRoute is null ? Texts.NotConnected : Texts.Available;
         MobileDataDetailText = mobileDataRoute is null
-            ? $"{Settings.SimCarrierName} ・ {Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}"
-            : $"{Settings.SimCarrierName} ・ {FormatNextHop(mobileDataRoute.NextHop)} ・ {Settings.SimInterfaceAlias} #{mobileDataRoute.InterfaceIndex}";
+            ? string.Format(Texts.InterfaceFormat, FormatIndex(Settings.SimInterfaceIndex))
+            : FormatNextHop(mobileDataRoute.NextHop);
 
         ActiveLineText = bestRoute is null
-            ? "現在の主回線: なし"
+            ? Texts.NoPrimaryLine
             : isMobileDataActive
-                ? $"現在の主回線: {RouterLineLabel} ({Settings.SimDisplayName})"
+                ? string.Format(Texts.PrimaryLineFormat, Settings.SimDisplayName)
                 : isWifiActive
-                    ? $"現在の主回線: Wi-Fi ({Settings.PrimaryWifiDisplayName})"
-                    : $"現在の主回線: {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex}";
+                    ? string.Format(Texts.PrimaryLineFormat, Settings.PrimaryWifiDisplayName)
+                    : string.Format(Texts.PrimaryLineFormat, $"#{bestRoute.InterfaceIndex}");
     }
 
     private async Task<AdapterStatusResult> GetWifiAdapterStatusAsync()
@@ -349,24 +352,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private static string FormatWifiStatusText(AdapterStatusResult adapterStatus, bool isWifiActive)
+    private string FormatWifiStatusText(AdapterStatusResult adapterStatus, bool isWifiActive)
     {
         if (!adapterStatus.Exists)
         {
-            return "未確認";
+            return Texts.Unknown;
         }
 
         if (isWifiActive)
         {
-            return "使用中";
+            return Texts.InUse;
         }
 
         return adapterStatus.Status switch
         {
-            "Up" => "已連線",
-            "Disconnected" => "未連線",
-            "Disabled" => "已關閉",
-            "Not Present" => "不存在",
+            "Up" => Texts.Connected,
+            "Disconnected" => Texts.NotConnected,
+            "Disabled" => Texts.Disabled,
+            "Not Present" => Texts.NotPresent,
             _ => FormatAdapterStatus(adapterStatus.Status)
         };
     }
@@ -375,23 +378,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         var adapterIndex = adapterStatus.InterfaceIndex ?? Settings.PrimaryWifiInterfaceIndex;
         var adapterText = adapterStatus.Exists
-            ? $"{adapterStatus.Name} #{FormatIndex(adapterIndex)} ・ {FormatAdapterStatus(adapterStatus.Status)}"
-            : $"{Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(adapterIndex)} ・ {adapterStatus.Message}";
+            ? string.Format(Texts.InterfaceFormat, FormatIndex(adapterIndex))
+            : $"{string.Format(Texts.InterfaceFormat, FormatIndex(adapterIndex))} ・ {adapterStatus.Message}";
 
         return wifiRoute is null
             ? adapterText
-            : $"{adapterText} ・ {FormatNextHop(wifiRoute.NextHop)}";
+            : adapterText;
     }
 
-    private static string FormatAdapterStatus(string status)
+    private string FormatAdapterStatus(string status)
     {
         return status switch
         {
-            "Up" => "Up",
-            "Disconnected" => "Disconnected",
-            "Disabled" => "Disabled",
-            "Not Present" => "Not Present",
-            _ => string.IsNullOrWhiteSpace(status) ? "Unknown" : status
+            "Up" => Texts.Connected,
+            "Disconnected" => Texts.NotConnected,
+            "Disabled" => Texts.Disabled,
+            "Not Present" => Texts.NotPresent,
+            _ => string.IsNullOrWhiteSpace(status) ? Texts.Unknown : status
         };
     }
 
@@ -433,9 +436,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         IsBusy = true;
         _isSwitchingWifiAdapter = true;
-        var requestedStateText = enabled ? "開啟" : "關閉";
-        AdapterControlStatusText = $"{requestedStateText} Wi-Fi 中...";
-        WifiStatusText = "更新中";
+        var requestedStateText = enabled ? Texts.EnableAction : Texts.DisableAction;
+        AdapterControlStatusText = string.Format(Texts.WifiUpdatingFormat, requestedStateText);
+        WifiStatusText = Texts.Updating;
 
         try
         {
@@ -445,8 +448,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 Settings,
                 CancellationToken.None);
 
-            RouteControlText = result.Message;
-            AdapterControlStatusText = result.Message;
+            var commandResultText = result.IsDryRun
+                ? Texts.AdapterDryRunNotice
+                : Texts.SettingsSaved;
+            RouteControlText = commandResultText;
+            AdapterControlStatusText = commandResultText;
 
             await Task.Delay(TimeSpan.FromSeconds(2));
             _isSwitchingWifiAdapter = false;
@@ -460,7 +466,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (!result.IsDryRun && !expectedStateMatched)
             {
                 AdapterControlStatusText =
-                    $"{requestedStateText} Wi-Fi 指令已送出，但目前網卡狀態仍是 {FormatAdapterStatus(refreshedStatus.Status)}。";
+                    string.Format(
+                        Texts.AdapterStateMismatchFormat,
+                        requestedStateText,
+                        FormatAdapterStatus(refreshedStatus.Status));
             }
         }
         catch (Exception exception)
@@ -575,7 +584,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 Settings,
                 CancellationToken.None);
 
-            RouteControlText = result.Message;
+            RouteControlText = result.IsDryRun
+                ? Texts.RoutePrioritySaved
+                : Texts.RoutePriorityApplied;
 
             if (!result.IsDryRun && result.ChangedRouteCount > 0)
             {
@@ -585,7 +596,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            RouteControlText = $"優先度已紀錄，但 Windows route 套用失敗：{exception.Message}";
+            RouteControlText = string.Format(Texts.RoutePriorityApplyFailedFormat, exception.Message);
         }
         finally
         {
@@ -647,8 +658,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             OnPropertyChanged(nameof(RouterDisplayName));
             OnPropertyChanged(nameof(MobileDataCarrierName));
             OnPropertyChanged(nameof(OptionsSummary));
+            OnPropertyChanged(nameof(Texts));
+            OnPropertyChanged(nameof(RouterLineLabel));
             UpdateAdapterControlStatus();
-            RouteControlText = "設定已儲存。";
+            RouteControlText = Texts.SettingsSaved;
             _ = RunCheckAsync();
         }
     }
@@ -656,8 +669,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void UpdateAdapterControlStatus()
     {
         AdapterControlStatusText = Settings.EnableAdapterChanges
-            ? "Wi-Fi 開關會要求系統管理員權限並實際變更網卡。"
-            : "目前是 dry-run：按鈕只預演，不會真的開關 Wi-Fi。";
+            ? Texts.AdapterEnabledNotice
+            : Texts.AdapterDryRunNotice;
     }
 
     private void SaveSettings()
@@ -678,7 +691,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(RouterDisplayName));
         OnPropertyChanged(nameof(MobileDataCarrierName));
         OnPropertyChanged(nameof(OptionsSummary));
-        RouteControlText = "設定已儲存。下一次更新會使用新的顯示名稱。";
+        RouteControlText = Texts.SettingsSaved;
     }
 
     private void SaveSelectedNetworkName()
@@ -709,7 +722,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         TraySettingsLoader.Save(Settings);
-        RouteControlText = $"{SelectedRoute.RawGateway} 已對應為 {displayName}。";
+        RouteControlText = Texts.NameSavedNotice;
         OnPropertyChanged(nameof(SettingsSummary));
         OnPropertyChanged(nameof(WifiDisplayName));
         OnPropertyChanged(nameof(RouterDisplayName));

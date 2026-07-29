@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="網路名稱設定" Height="460" Width="760"
+        Title="{Binding Texts.SettingsTitle}" Height="500" Width="760"
         MinHeight="360" MinWidth="640"
         WindowStartupLocation="CenterOwner"
         Background="#F3F5F7">
@@ -16,9 +16,24 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="網路名稱設定" FontSize="22" FontWeight="SemiBold" />
-            <TextBlock Text="左邊是目前偵測到的網路，右邊是你要顯示在主畫面的名稱。"
+            <TextBlock Text="{Binding Texts.SettingsTitle}" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Texts.SettingsDescription}"
                        Foreground="#64748B" Margin="0,4,0,0" />
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="240" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Texts.LanguageLabel}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0" />
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding CultureOptions}"
+                          SelectedValue="{Binding SelectedCultureName, Mode=TwoWay}"
+                          SelectedValuePath="CultureName"
+                          DisplayMemberPath="DisplayName" />
+            </Grid>
         </StackPanel>
 
         <DataGrid Grid.Row="1"
@@ -30,8 +45,15 @@
                   GridLinesVisibility="Horizontal"
                   RowHeaderWidth="0">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="現有網路" Binding="{Binding CurrentNetwork}" IsReadOnly="True" Width="*" />
-                <DataGridTemplateColumn Header="自訂名稱" Width="260">
+                <DataGridTextColumn Binding="{Binding CurrentNetwork}" IsReadOnly="True" Width="*">
+                    <DataGridTextColumn.Header>
+                        <TextBlock Text="{Binding DataContext.Texts.ExistingNetworkColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                    </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Width="260">
+                    <DataGridTemplateColumn.Header>
+                        <TextBlock Text="{Binding DataContext.Texts.DisplayNameColumn, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                    </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"
@@ -50,15 +72,15 @@
 
             <StackPanel Grid.Column="0">
                 <CheckBox IsChecked="{Binding EnableAdapterChanges, Mode=TwoWay}"
-                          Content="允許實際開啟/關閉 Wi-Fi（會跳出系統管理員權限確認）" />
+                          Content="{Binding Texts.AllowAdapterChanges}" />
                 <CheckBox IsChecked="{Binding EnableRouteChanges, Mode=TwoWay}"
                           Margin="0,8,0,0"
-                          Content="允許實際變更路由優先度（會跳出系統管理員權限確認）" />
+                          Content="{Binding Texts.AllowRouteChanges}" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="取消" MinWidth="90" Height="32" Margin="0,0,8,0" Click="CancelButton_Click" />
-                <Button Content="儲存" MinWidth="90" Height="32" Click="SaveButton_Click" />
+                <Button Content="{Binding Texts.Save}" MinWidth="90" Height="32" Margin="0,0,8,0" Click="SaveButton_Click" />
+                <Button Content="{Binding Texts.Cancel}" MinWidth="90" Height="32" Click="CancelButton_Click" />
             </StackPanel>
         </Grid>
     </Grid>
