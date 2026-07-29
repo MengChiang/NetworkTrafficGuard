@@ -10,7 +10,7 @@ public sealed partial class NetworkNameMappingRowViewModel(RouteRowViewModel rou
 
     public string RawGateway { get; } = route.RawGateway;
 
-    public string CurrentNetwork { get; } = $"{route.Gateway} / {route.Interface} / {route.AddressFamily}";
+    public string CurrentNetwork { get; } = $"{route.Gateway} / {route.AddressFamily}";
 
     [ObservableProperty]
     private string _displayName = route.NetworkName.Split(" / ", StringSplitOptions.None)[0];

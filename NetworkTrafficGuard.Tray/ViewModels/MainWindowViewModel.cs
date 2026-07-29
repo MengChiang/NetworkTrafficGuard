@@ -50,7 +50,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _bestRouteText = "Not checked yet";
 
     [ObservableProperty]
-    private string _routeControlText = UiTextProvider.Get(null).RouteIdle;
+    private string _routeControlText = string.Empty;
 
     [ObservableProperty]
     private string _wifiStatusText = UiTextProvider.Get(null).Unknown;
@@ -179,6 +179,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string RouterLineLabel => Texts.SimRouterLineLabel;
 
+    public Visibility RouteControlVisibility => string.IsNullOrWhiteSpace(RouteControlText)
+        ? Visibility.Collapsed
+        : Visibility.Visible;
+
     public string RouterDisplayName => Settings.SimDisplayName;
 
     public string MobileDataCarrierName => Settings.SimCarrierName;
@@ -198,6 +202,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         DisableWifiCommand.NotifyCanExecuteChanged();
         MoveRouteUpCommand.NotifyCanExecuteChanged();
         MoveRouteDownCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnRouteControlTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(RouteControlVisibility));
     }
 
     partial void OnSelectedRouteChanged(RouteRowViewModel? value)
@@ -326,11 +335,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             IsWifiToggleChecked = wifiAdapterStatus.IsEnabled;
         }
 
-        WifiDetailText = FormatWifiDetailText(wifiAdapterStatus, wifiRoute);
+        WifiDetailText = FormatWifiDetailText(wifiRoute);
 
         MobileDataStatusText = isMobileDataActive ? Texts.InUse : mobileDataRoute is null ? Texts.NotConnected : Texts.Available;
         MobileDataDetailText = mobileDataRoute is null
-            ? string.Format(Texts.InterfaceFormat, FormatIndex(Settings.SimInterfaceIndex))
+            ? Texts.GatewayNotDetected
             : FormatNextHop(mobileDataRoute.NextHop);
 
         ActiveLineText = bestRoute is null
@@ -339,7 +348,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ? string.Format(Texts.PrimaryLineFormat, Settings.SimDisplayName)
                 : isWifiActive
                     ? string.Format(Texts.PrimaryLineFormat, Settings.PrimaryWifiDisplayName)
-                    : string.Format(Texts.PrimaryLineFormat, $"#{bestRoute.InterfaceIndex}");
+                    : string.Format(Texts.PrimaryLineFormat, bestRoute.InterfaceAlias);
 
         UpdatePrimaryTrafficMonitor(bestRoute, isMobileDataActive, isWifiActive);
     }
@@ -361,7 +370,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? Settings.SimDisplayName
             : isWifiActive
                 ? Settings.PrimaryWifiDisplayName
-                : $"#{bestRoute.InterfaceIndex}";
+                : bestRoute.InterfaceAlias;
 
         var key = CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.NextHop);
 
@@ -420,16 +429,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         };
     }
 
-    private string FormatWifiDetailText(AdapterStatusResult adapterStatus, DefaultRouteInfo? wifiRoute)
+    private string FormatWifiDetailText(DefaultRouteInfo? wifiRoute)
     {
-        var adapterIndex = adapterStatus.InterfaceIndex ?? Settings.PrimaryWifiInterfaceIndex;
-        var adapterText = adapterStatus.Exists
-            ? string.Format(Texts.InterfaceFormat, FormatIndex(adapterIndex))
-            : $"{string.Format(Texts.InterfaceFormat, FormatIndex(adapterIndex))} ・ {adapterStatus.Message}";
-
         return wifiRoute is null
-            ? adapterText
-            : adapterText;
+            ? Texts.GatewayNotDetected
+            : FormatNextHop(wifiRoute.NextHop);
     }
 
     private string FormatAdapterStatus(string status)
@@ -792,7 +796,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _selectedRouteKey = routeKey;
 
         SelectedNetworkTitle = route.NetworkName;
-        SelectedNetworkDetail = $"{route.Gateway} ・ {route.Interface} ・ {route.AddressFamily}";
+        SelectedNetworkDetail = $"{route.Gateway} ・ {route.AddressFamily}";
 
         if (!isSameRoute)
         {
@@ -912,7 +916,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     routeKey,
                     route.InterfaceIndex,
                     route.NetworkName,
-                    $"{route.Gateway} ・ {route.Interface}"));
+                    route.Gateway));
         }
 
         TrafficMonitors = nextMonitors;

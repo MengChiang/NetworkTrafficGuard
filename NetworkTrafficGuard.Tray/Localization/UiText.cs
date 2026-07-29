@@ -70,6 +70,8 @@ public sealed record UiText
 
     public required string InterfaceFormat { get; init; }
 
+    public required string GatewayNotDetected { get; init; }
+
     public required string NoPrimaryLine { get; init; }
 
     public required string PrimaryLineFormat { get; init; }
