@@ -247,10 +247,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             var defaultRoutes = await _routeReader.GetDefaultRoutesAsync(CancellationToken.None);
             var metricOrderedRoutes = DefaultRouteSelector.GetDefaultRoutes(defaultRoutes);
-            var orderedRoutes = ApplySavedRoutePriorities(metricOrderedRoutes);
-            var bestRoute = metricOrderedRoutes.FirstOrDefault();
             var policyResult = _policyEngine.Evaluate(defaultRoutes, Settings);
             var wifiAdapterStatus = await GetWifiAdapterStatusAsync();
+            var availableMetricOrderedRoutes = FilterUnavailableRoutes(metricOrderedRoutes, wifiAdapterStatus);
+            var orderedRoutes = ApplySavedRoutePriorities(availableMetricOrderedRoutes);
+            var bestRoute = availableMetricOrderedRoutes.FirstOrDefault();
 
             var previousSelectedKey = SelectedRoute is null
                 ? null
@@ -353,7 +354,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var mobileDataRoute = orderedRoutes.FirstOrDefault(IsMobileDataRoute);
         var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
-        _isWifiRouteAvailable = wifiRoute is not null && wifiAdapterStatus.IsEnabled;
+        _isWifiRouteAvailable = wifiRoute is not null && IsWifiAdapterConnected(wifiAdapterStatus);
         _wifiRouteKey = wifiRoute is null
             ? null
             : CreateRouteKey(wifiRoute.InterfaceIndex, wifiRoute.NextHop);
@@ -381,6 +382,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     : string.Format(Texts.PrimaryLineFormat, bestRoute.InterfaceAlias);
 
         UpdatePrimaryTrafficMonitor(bestRoute, isMobileDataActive, isWifiActive);
+    }
+
+    private IReadOnlyList<DefaultRouteInfo> FilterUnavailableRoutes(
+        IReadOnlyList<DefaultRouteInfo> routes,
+        AdapterStatusResult wifiAdapterStatus)
+    {
+        if (IsWifiAdapterConnected(wifiAdapterStatus))
+        {
+            return routes;
+        }
+
+        return routes
+            .Where(route => !IsWifiRoute(route))
+            .ToList();
     }
 
     private void UpdatePrimaryTrafficMonitor(
@@ -416,6 +431,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _primaryTrafficName,
             string.Empty);
         UpdateTrayToolTipText();
+    }
+
+    private static bool IsWifiAdapterConnected(AdapterStatusResult adapterStatus)
+    {
+        return adapterStatus.Exists
+            && string.Equals(adapterStatus.Status, "Up", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<AdapterStatusResult> GetWifiAdapterStatusAsync()
