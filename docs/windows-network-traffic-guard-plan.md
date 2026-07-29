@@ -1,511 +1,192 @@
-# Windows 網路流量守門員需求與開發計畫
+# Network Traffic Guard Plan
 
-## 1. 背景
+English is the default documentation language for this project.
 
-目前電腦同時連接兩個網路：
+Localized versions:
 
-- Wi-Fi：主要上網來源，有時會帶出門使用。
-- 有線網路：連接家中的 備援路由器，流量有限，希望作為受控備援。
+- [Traditional Chinese](windows-network-traffic-guard-plan.zh-TW.md)
+- [Simplified Chinese](windows-network-traffic-guard-plan.zh-CN.md)
+- [Japanese](windows-network-traffic-guard-plan.ja-JP.md)
 
-問題是當 Wi-Fi 中斷時，Windows 會自動改走有線 備援路由器，導致大量流量在未察覺的情況下被消耗。
+## 1. Purpose
 
-目標是開發一個 Windows 常駐程式，像手機的行動數據保護機制一樣：
+Network Traffic Guard is a Windows resident application that helps prevent unexpected Internet usage through an expensive or limited backup network.
 
-- 優先使用指定 Wi-Fi。
-- 偵測目前 Internet 流量是否正在走 備援路由器。
-- 在切換到 備援網路 網路時警告。
-- 必要時自動阻止 備援網路 網路承接 Internet 流量。
+The original use case is a PC connected to both:
 
-## 2. 核心目標
+- Wi-Fi as the preferred Internet connection.
+- A wired network connected to a home router that may use limited data.
 
-### 必要目標
+When Wi-Fi disconnects, Windows may automatically switch the default Internet route to another available network. This app watches that routing state, shows which connection is active, displays live traffic, and alerts the user when selected routes exceed a threshold.
 
-1. 偵測目前 Windows 的主要 Internet default route。
-2. 判斷目前是否正在使用 備援網路上網。
-3. 當 Wi-Fi 中斷且流量改走 備援網路時，立即通知使用者。
-4. 提供設定讓使用者選擇：
-   - 只警告。
-   - 自動封鎖 secondary network Internet。
-   - 詢問後允許 備援網路 臨時接管。
-5. 程式需可開機自動啟動。
+## 2. Current Scope
 
-### 延伸目標
+The current MVP focuses on local Windows monitoring and a WPF tray UI.
 
-1. 監控 備援網路 網路本月使用量。
-2. 設定流量警戒值，例如 1GB、5GB、10GB。
-3. 提供「允許 備援網路 使用 10 分鐘 / 30 分鐘 / 直到下次重開機」。
-4. 顯示 tray icon 狀態：
-   - 綠色：Wi-Fi 正常。
-   - 黃色：Wi-Fi 中斷，但 備援網路 尚未接管。
-   - 紅色：目前正在使用 備援網路 上網。
-5. 允許指定安全 Wi-Fi SSID 清單。
-6. 匯出診斷報告，方便確認 Windows routing 狀態。
+Implemented:
 
-## 3. 建議 MVP 範圍
+- Reads Windows default routes through PowerShell.
+- Detects the best default route by route metric and interface metric.
+- Shows the highest-priority Wi-Fi route and highest-priority non-Wi-Fi network interface.
+- Hides disconnected or disabled network interfaces from the status cards and traffic monitor.
+- Shows route priority in a compact table.
+- Allows reordering route priority and saving the order.
+- Allows route priority changes to be applied to Windows when enabled.
+- Allows Wi-Fi enable/disable commands from the settings menu when adapter changes are enabled.
+- Shows realtime traffic per selected route.
+- Supports multiple selected traffic monitors.
+- Supports alert checkboxes per route.
+- Shows Windows tray notifications when monitored alert traffic exceeds the configured threshold.
+- Shows tray tooltip text with the primary connection and current traffic rate.
+- Provides custom display-name settings for detected networks.
+- Provides separate alert settings.
+- Supports UI languages: English, Traditional Chinese, Simplified Chinese, and Japanese.
 
-第一版先不要做太大，建議只做以下功能：
+Not implemented yet:
 
-1. 設定主要 Wi-Fi 介面。
-2. 設定 備援網路介面。
-3. 每 2 至 5 秒檢查目前 default route。
-4. 若 default route 指向 備援網路：
-   - 顯示 Windows toast notification。
-   - tray icon 變成紅色。
-   - 若啟用「自動封鎖」，則移除或降低 secondary network default route。
-5. 提供簡單設定檔 `appsettings.json`。
-6. 寫入文字 log。
+- Monthly data usage accounting.
+- Temporary allow rules, such as 10 minutes or until restart.
+- A full Windows Service deployment flow.
+- Native Windows IP Helper API route reading.
+- Wi-Fi SSID allow-list enforcement.
+- Installer and auto-start registration.
 
-## 4. 重要概念
+## 3. Terminology
 
-### 4.1 Interface Metric
+The app uses generic network terminology instead of assuming the backup connection is mobile data.
 
-Windows 會依照 route metric 與 interface metric 選擇出口網路。
+- Primary Wi-Fi: the preferred Wi-Fi connection.
+- Secondary network: a configured backup or non-preferred network interface.
+- Network interface: any detected Windows network interface.
+- Gateway: the next-hop address used by a default route.
+- Display name: a user-defined name shown in the UI.
+- Alert route: a route selected for traffic-threshold notifications.
 
-當 Wi-Fi 和有線 備援網路 都可連 Internet 時，可以讓 Wi-Fi metric 較低、備援網路 metric 較高。這會讓 Windows 優先使用 Wi-Fi。
+System messages, logs, and code identifiers are written in English. UI text is localized.
 
-但這不會防止 Wi-Fi 斷線後 備援網路 自動接手，因為 Windows 仍然會找到另一條可用 default route。
-
-### 4.2 Default Route
-
-真正要監控的是 default route：
-
-```powershell
-Get-NetRoute -DestinationPrefix "0.0.0.0/0"
-```
-
-若目前最佳 default route 的 `InterfaceAlias` 或 `InterfaceIndex` 是 備援網路 有線網卡，就代表 Internet 流量可能正在走 備援網路。
-
-### 4.3 封鎖策略
-
-有三種可選策略：
-
-| 策略 | 說明 | 優點 | 缺點 |
-| --- | --- | --- | --- |
-| 警告 | 只通知使用者 | 最安全，不改系統設定 | 仍可能吃流量 |
-| 移除 secondary network default route | 保留 LAN，但不讓 備援網路 當 Internet 出口 | 最符合需求 | 需要系統管理員權限 |
-| 停用 備援網路介面 | 直接停用網路介面 | 很有效 | 可能影響連線到 備援路由器管理頁 |
-
-建議 MVP 使用「偵測 + 警告 + 可選移除 secondary network default route」。
-
-## 5. 建議技術架構
-
-### 5.1 第一階段架構
-
-先做單一 WPF tray app：
+## 4. Project Structure
 
 ```text
-NetworkTrafficGuard.App
-├─ Tray UI
-├─ Settings
-├─ Network Monitor
-├─ Route Controller
-└─ Logging
-```
+NetworkTrafficGuard.Core
+  Domain models, settings, route selection, and policy logic.
 
-優點是開發快，容易 debug。
-
-缺點是若要改 route，程式需要以系統管理員權限執行。
-
-### 5.2 穩定版架構
-
-之後再拆成：
-
-```text
-NetworkTrafficGuard.Service
-├─ 背景監控
-├─ route 修改
-├─ traffic counter
-└─ event log
+NetworkTrafficGuard.Windows
+  Windows-specific PowerShell route and adapter controllers.
 
 NetworkTrafficGuard.Tray
-├─ tray icon
-├─ notification
-├─ settings UI
-└─ 與 service 溝通
+  WPF tray application, localized UI, traffic monitor, settings windows, and notifications.
 
-NetworkTrafficGuard.Core
-├─ domain model
-├─ network abstraction
-├─ policy engine
-└─ shared DTO
+NetworkTrafficGuard.Service
+  Worker-service prototype for background monitoring.
 
 NetworkTrafficGuard.Tests
-└─ unit tests
+  Unit tests for policy and Windows command generation behavior.
 ```
 
-Service 以系統管理員權限安裝一次即可，tray app 用一般權限執行。
+## 5. Settings
 
-## 6. 建議專案建立步驟
-
-### 6.1 建立 solution
-
-```powershell
-mkdir NetworkTrafficGuard
-cd NetworkTrafficGuard
-
-dotnet new sln -n NetworkTrafficGuard
-
-dotnet new classlib -n NetworkTrafficGuard.Core
-dotnet new wpf -n NetworkTrafficGuard.Tray
-dotnet new worker -n NetworkTrafficGuard.Service
-dotnet new xunit -n NetworkTrafficGuard.Tests
-
-dotnet sln add .\NetworkTrafficGuard.Core\NetworkTrafficGuard.Core.csproj
-dotnet sln add .\NetworkTrafficGuard.Tray\NetworkTrafficGuard.Tray.csproj
-dotnet sln add .\NetworkTrafficGuard.Service\NetworkTrafficGuard.Service.csproj
-dotnet sln add .\NetworkTrafficGuard.Tests\NetworkTrafficGuard.Tests.csproj
-
-dotnet add .\NetworkTrafficGuard.Tray\NetworkTrafficGuard.Tray.csproj reference .\NetworkTrafficGuard.Core\NetworkTrafficGuard.Core.csproj
-dotnet add .\NetworkTrafficGuard.Service\NetworkTrafficGuard.Service.csproj reference .\NetworkTrafficGuard.Core\NetworkTrafficGuard.Core.csproj
-dotnet add .\NetworkTrafficGuard.Tests\NetworkTrafficGuard.Tests.csproj reference .\NetworkTrafficGuard.Core\NetworkTrafficGuard.Core.csproj
-```
-
-### 6.2 建議 NuGet 套件
-
-```powershell
-dotnet add .\NetworkTrafficGuard.Tray package Hardcodet.NotifyIcon.Wpf
-dotnet add .\NetworkTrafficGuard.Tray package CommunityToolkit.Mvvm
-dotnet add .\NetworkTrafficGuard.Core package Microsoft.Extensions.Logging.Abstractions
-dotnet add .\NetworkTrafficGuard.Service package Microsoft.Extensions.Hosting.WindowsServices
-dotnet add .\NetworkTrafficGuard.Tests package FluentAssertions
-```
-
-若想做 toast notification，可再評估：
-
-```powershell
-dotnet add .\NetworkTrafficGuard.Tray package CommunityToolkit.WinUI.Notifications
-```
-
-## 7. Core 專案設計
-
-### 7.1 Domain Models
-
-```csharp
-public sealed record NetworkAdapterInfo(
-    int InterfaceIndex,
-    string InterfaceAlias,
-    string Description,
-    bool IsWireless,
-    bool IsUp);
-
-public sealed record DefaultRouteInfo(
-    string DestinationPrefix,
-    string NextHop,
-    int InterfaceIndex,
-    string InterfaceAlias,
-    uint RouteMetric,
-    uint InterfaceMetric);
-
-public enum NetworkRiskLevel
-{
-    Normal,
-    WifiUnavailable,
-    SecondaryRouteActive,
-    Unknown
-}
-
-public sealed record NetworkPolicyResult(
-    NetworkRiskLevel RiskLevel,
-    string Message,
-    bool ShouldNotify,
-    bool ShouldBlockSecondaryRoute);
-```
-
-### 7.2 設定檔
+Example:
 
 ```json
 {
   "PrimaryWifiInterfaceAlias": "Wi-Fi",
+  "PrimaryWifiInterfaceIndex": null,
+  "PrimaryWifiDisplayName": "Home Wi-Fi",
   "SecondaryInterfaceAlias": "Ethernet",
+  "SecondaryInterfaceIndex": null,
+  "SecondaryDisplayName": "Backup Router",
+  "SecondaryProviderName": "",
+  "GatewayDisplayNames": {
+    "192.168.100.1": "Backup Router"
+  },
+  "RoutePriorities": {},
+  "MonitoredRouteKeys": [],
+  "AlertRouteKeys": [],
+  "AlertThresholdKbps": 100,
   "Mode": "WarnOnly",
+  "EnableRouteChanges": false,
+  "EnableAdapterChanges": false,
   "CheckIntervalSeconds": 3,
-  "AllowedWifiSsids": [
-    "HomeWifi",
-    "PhoneHotspot"
-  ]
+  "CultureName": "en-US",
+  "AllowedWifiSsids": []
 }
 ```
 
-`Mode` 建議先支援：
+Important flags:
 
-- `WarnOnly`
-- `BlockSecondaryWhenWifiDown`
-- `AskBeforeUsingSecondary`
+- `EnableRouteChanges`: when `false`, route changes are simulation-only.
+- `EnableAdapterChanges`: when `false`, Wi-Fi adapter enable/disable commands are simulation-only.
+- `AlertThresholdKbps`: threshold for route traffic notifications.
+- `CultureName`: UI language, such as `en-US`, `zh-TW`, `zh-CN`, or `ja-JP`.
 
-### 7.3 Policy Engine
+## 6. UI Behavior
 
-核心判斷應該獨立於 Windows API，方便測試：
+Main window:
 
-```csharp
-public sealed class NetworkPolicyEngine
-{
-    public NetworkPolicyResult Evaluate(
-        IReadOnlyList<DefaultRouteInfo> defaultRoutes,
-        string primaryWifiAlias,
-        string secondaryAlias,
-        GuardMode mode)
-    {
-        var bestRoute = defaultRoutes
-            .OrderBy(route => route.RouteMetric + route.InterfaceMetric)
-            .FirstOrDefault();
+- Top cards show Wi-Fi and the highest-priority non-Wi-Fi network interface.
+- The route table shows visible routes, alert selection, priority, network name, gateway, and type.
+- Up and down buttons reorder route priority.
+- Realtime traffic shows one card per selected route.
 
-        if (bestRoute is null)
-        {
-            return new NetworkPolicyResult(
-                NetworkRiskLevel.Unknown,
-                "找不到 default route。",
-                ShouldNotify: true,
-                ShouldBlockSecondaryRoute: false);
-        }
+Custom name settings:
 
-        if (string.Equals(bestRoute.InterfaceAlias, secondaryAlias, StringComparison.OrdinalIgnoreCase))
-        {
-            return new NetworkPolicyResult(
-                NetworkRiskLevel.SecondaryRouteActive,
-                "目前 Internet default route 指向 備援網路。",
-                ShouldNotify: true,
-                ShouldBlockSecondaryRoute: mode == GuardMode.BlockSecondaryWhenWifiDown);
-        }
+- Detected network, gateway, and type are read-only columns.
+- Display name is the editable column.
+- Saved names are read from settings when the window is opened again.
 
-        return new NetworkPolicyResult(
-            NetworkRiskLevel.Normal,
-            "目前未使用 備援網路作為主要 Internet 出口。",
-            ShouldNotify: false,
-            ShouldBlockSecondaryRoute: false);
-    }
-}
-```
+Alert settings:
 
-## 8. Windows 網路資訊取得方式
+- Alert threshold is configured in a separate settings window.
+- Per-route alert selection remains in the main route table.
 
-### 8.1 MVP：呼叫 PowerShell
+## 7. Development Workflow
 
-第一版可以先用 PowerShell，開發速度最快：
+Build:
 
 ```powershell
-Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-  Sort-Object { $_.RouteMetric + (Get-NetIPInterface -InterfaceIndex $_.InterfaceIndex).InterfaceMetric } |
-  Select-Object -First 1
+dotnet build .\NetworkTrafficGuard.slnx
 ```
 
-C# 可用 `ProcessStartInfo` 呼叫 PowerShell 並讀 JSON：
+Test:
 
 ```powershell
-Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-  Select-Object DestinationPrefix,NextHop,InterfaceIndex,InterfaceAlias,RouteMetric |
-  ConvertTo-Json
+dotnet test .\NetworkTrafficGuard.Tests\NetworkTrafficGuard.Tests.csproj
 ```
 
-### 8.2 穩定版：使用 Windows API / WMI / CIM
-
-後續可改成：
-
-- `System.Net.NetworkInformation.NetworkInterface`
-- WMI / CIM 查 route table
-- Windows IP Helper API
-
-建議先不要太早碰 P/Invoke。先把產品行為做對，再優化資料來源。
-
-## 9. 封鎖 secondary network Internet 的實作方式
-
-### 9.1 移除 secondary network default route
+Run tray app:
 
 ```powershell
-Get-NetRoute -DestinationPrefix "0.0.0.0/0" -InterfaceAlias "Ethernet" |
-  Remove-NetRoute -Confirm:$false
+dotnet run --project .\NetworkTrafficGuard.Tray\NetworkTrafficGuard.Tray.csproj
 ```
 
-這通常需要系統管理員權限。
+If the tray app is already running, close it before building because Windows may lock output DLLs.
 
-### 9.2 提高 secondary network interface metric
+## 8. Testing Notes
 
-```powershell
-Set-NetIPInterface -InterfaceAlias "Ethernet" -InterfaceMetric 9000
-```
+Existing tests cover:
 
-這只能降低優先權，無法防止 Wi-Fi 斷線後 備援網路 接管。
+- Wi-Fi route preferred policy behavior.
+- Secondary route active policy behavior.
+- Block mode policy result.
+- No-default-route behavior.
+- Secondary interface matching by index.
+- English system policy messages.
+- PowerShell route-control dry-run behavior.
 
-### 9.3 停用 備援網路介面
+Manual testing should cover:
 
-```powershell
-Disable-NetAdapter -Name "Ethernet" -Confirm:$false
-```
+- Disable and re-enable Wi-Fi from Windows and verify UI refresh.
+- Add or remove a network adapter and verify the top cards update.
+- Rename a detected network, save, reopen settings, and verify the saved name appears.
+- Select multiple traffic monitors and verify all selected routes show traffic cards.
+- Enable an alert route, exceed the threshold, and verify tray notification behavior.
 
-比較激進，不建議作為預設。
+## 9. Next Steps
 
-## 10. 測試策略
+Recommended next development steps:
 
-### 10.1 Unit Tests
-
-先測 `NetworkPolicyEngine`：
-
-- Wi-Fi 是 best route 時，狀態為 `Normal`。
-- 備援網路 是 best route 且模式為 `WarnOnly` 時，只警告不封鎖。
-- 備援網路 是 best route 且模式為 `BlockSecondaryWhenWifiDown` 時，應要求封鎖。
-- 沒有 default route 時，狀態為 `Unknown`。
-
-範例：
-
-```csharp
-[Fact]
-public void Evaluate_WhenSecondaryRouteIsBestAndModeIsBlock_ShouldRequestBlock()
-{
-    var engine = new NetworkPolicyEngine();
-    var routes = new[]
-    {
-        new DefaultRouteInfo("0.0.0.0/0", "192.168.8.1", 12, "Ethernet", 10, 10)
-    };
-
-    var result = engine.Evaluate(
-        routes,
-        primaryWifiAlias: "Wi-Fi",
-        secondaryAlias: "Ethernet",
-        mode: GuardMode.BlockSecondaryWhenWifiDown);
-
-    result.RiskLevel.Should().Be(NetworkRiskLevel.SecondaryRouteActive);
-    result.ShouldNotify.Should().BeTrue();
-    result.ShouldBlockSecondaryRoute.Should().BeTrue();
-}
-```
-
-### 10.2 Integration Tests
-
-不要在一般測試中真的改 Windows route。
-
-建議建立 interface：
-
-```csharp
-public interface IRouteReader
-{
-    Task<IReadOnlyList<DefaultRouteInfo>> GetDefaultRoutesAsync(CancellationToken cancellationToken);
-}
-
-public interface IRouteController
-{
-    Task RemoveDefaultRouteAsync(string interfaceAlias, CancellationToken cancellationToken);
-}
-```
-
-測試時使用 fake implementation。
-
-### 10.3 手動測試
-
-測試場景：
-
-1. Wi-Fi 與 備援網路都連上。
-2. 確認 default route 優先走 Wi-Fi。
-3. 關閉 Wi-Fi。
-4. 檢查程式是否偵測到 secondary network route active。
-5. 啟用自動封鎖。
-6. 再次關閉 Wi-Fi，確認 secondary network default route 被移除或警告彈出。
-
-建議測試前先保存目前 route：
-
-```powershell
-Get-NetRoute -DestinationPrefix "0.0.0.0/0" | Format-Table -AutoSize
-Get-NetIPInterface | Sort-Object InterfaceMetric | Format-Table InterfaceAlias,InterfaceIndex,InterfaceMetric,ConnectionState
-```
-
-## 11. 開發里程碑
-
-### Milestone 1：CLI Prototype
-
-目標：先做 console app，不做 UI。
-
-功能：
-
-- 列出 default routes。
-- 找出目前 best route。
-- 顯示是否正在使用 備援網路。
-- 支援 `--watch` 每幾秒檢查一次。
-
-完成條件：
-
-- 能正確在 Wi-Fi / 備援網路 切換時輸出狀態。
-
-### Milestone 2：Policy + Tests
-
-目標：把判斷邏輯抽到 Core，並補 unit tests。
-
-完成條件：
-
-- `dotnet test` 通過。
-- policy 不依賴真實 Windows 網路狀態。
-
-### Milestone 3：Tray App
-
-目標：做出常駐 tray icon。
-
-功能：
-
-- 顯示目前狀態。
-- 右鍵選單：
-  - 開啟設定。
-  - 暫停監控。
-  - 允許 備援網路 30 分鐘。
-  - 離開。
-- 偵測到 備援網路 接管時跳通知。
-
-### Milestone 4：Admin Action
-
-目標：加入封鎖 secondary network Internet。
-
-功能：
-
-- 手動按鈕移除 secondary network default route。
-- 自動封鎖模式。
-- 權限不足時提示以系統管理員執行。
-
-### Milestone 5：Windows Service
-
-目標：把監控和 route 修改移到 service。
-
-功能：
-
-- service 開機啟動。
-- tray app 只負責 UI。
-- 使用 named pipe 或 local HTTP IPC 與 service 溝通。
-
-## 12. 建議先做的最小程式流程
-
-```text
-啟動程式
-  ↓
-讀取設定
-  ↓
-每 3 秒讀取 default routes
-  ↓
-找出 best route
-  ↓
-判斷 best route 是否為 secondary network interface
-  ↓
-若否：tray icon 顯示正常
-  ↓
-若是：跳通知
-  ↓
-若模式為自動封鎖：移除 secondary network default route
-```
-
-## 13. 風險與注意事項
-
-1. 不同 Windows 語系的網卡名稱可能不同，不要硬寫 `Wi-Fi` 或 `Ethernet`。
-2. 使用者可能改名網卡，所以設定應保存 `InterfaceIndex` 和 `InterfaceAlias`，並允許重新選擇。
-3. route 操作需要系統管理員權限。
-4. 如果 備援路由器也承擔區網用途，停用網卡可能太激進。
-5. Windows 更新或 VPN 軟體可能改變 route table，應避免做過度假設。
-6. VPN 也可能成為 default route，policy 需要清楚定義 VPN 時的行為。
-7. 若使用 IPv6，還要監控 `::/0` default route。
-
-## 14. 建議下一步
-
-建議你先從 CLI Prototype 開始：
-
-1. 建立 solution。
-2. 新增 `NetworkTrafficGuard.Core` 和 `NetworkTrafficGuard.Cli`。
-3. 用 PowerShell JSON 讀取 default route。
-4. 把 route 判斷邏輯寫成可測試的 `NetworkPolicyEngine`。
-5. 確認能偵測到 Wi-Fi 斷線後 備援網路 接管。
-6. 再加入 tray app。
-
-這樣可以避免一開始就卡在 WPF tray、Windows Service、權限提升和安裝程式。先把「判斷正不正確」做出來，後面 UI 與 service 都只是包裝。
-
+1. Add a clearer distinction between interface display names and gateway display names.
+2. Add persistent monthly traffic accounting.
+3. Add installer and startup registration.
+4. Move long-running monitoring into the Windows Service.
+5. Replace PowerShell route reads with native Windows APIs when stability requires it.
