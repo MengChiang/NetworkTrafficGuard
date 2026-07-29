@@ -48,4 +48,29 @@ public sealed class MonthlyTrafficUsageStoreTests
             File.Delete(filePath);
         }
     }
+
+    [Fact]
+    public void ClearMonth_ShouldRemoveOnlySelectedMonth()
+    {
+        var filePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.json");
+        var store = new MonthlyTrafficUsageStore(filePath);
+
+        try
+        {
+            store.RecordSample("8|192.168.1.1", 8, "192.168.1.1", "Home Wi-Fi", 1_000, 1_000, new DateTimeOffset(2026, 7, 1, 0, 0, 0, TimeSpan.Zero));
+            store.RecordSample("8|192.168.1.1", 8, "192.168.1.1", "Home Wi-Fi", 1_500, 1_250, new DateTimeOffset(2026, 7, 1, 0, 0, 3, TimeSpan.Zero));
+            store.RecordSample("8|192.168.1.1", 8, "192.168.1.1", "Home Wi-Fi", 2_000, 2_000, new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero));
+            store.RecordSample("8|192.168.1.1", 8, "192.168.1.1", "Home Wi-Fi", 2_500, 2_250, new DateTimeOffset(2026, 8, 1, 0, 0, 3, TimeSpan.Zero));
+
+            var removed = store.ClearMonth("2026-07");
+
+            removed.Should().Be(1);
+            store.GetEntries("2026-07").Should().BeEmpty();
+            store.GetEntries("2026-08").Should().ContainSingle();
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
 }

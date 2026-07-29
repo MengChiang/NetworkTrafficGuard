@@ -56,6 +56,14 @@ public sealed record UiText
 
     public required string AlertSettingsTitle { get; init; }
 
+    public required string MonthlyUsageSettingsTitle { get; init; }
+
+    public required string ShowMonthlyTrafficUsage { get; init; }
+
+    public required string ClearMonthlyTrafficUsage { get; init; }
+
+    public required string MonthlyTrafficUsageCleared { get; init; }
+
     public required string AlertThresholdLabel { get; init; }
 
     public required string AlertThresholdUnit { get; init; }

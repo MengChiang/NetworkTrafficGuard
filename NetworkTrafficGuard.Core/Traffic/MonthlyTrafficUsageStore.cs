@@ -86,6 +86,48 @@ public sealed class MonthlyTrafficUsageStore
         }
     }
 
+    public int ClearMonth(string? month = null)
+    {
+        lock (_syncRoot)
+        {
+            if (!File.Exists(_filePath))
+            {
+                return 0;
+            }
+
+            var targetMonth = string.IsNullOrWhiteSpace(month)
+                ? DateTimeOffset.Now.ToString("yyyy-MM")
+                : month;
+            var document = LoadDocument();
+            var keys = document
+                .Entries
+                .Where(pair => string.Equals(pair.Value.Month, targetMonth, StringComparison.Ordinal))
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (var key in keys)
+            {
+                document.Entries.Remove(key);
+            }
+
+            if (keys.Count == 0)
+            {
+                return 0;
+            }
+
+            if (document.Entries.Count == 0)
+            {
+                File.Delete(_filePath);
+            }
+            else
+            {
+                SaveDocument(document);
+            }
+
+            return keys.Count;
+        }
+    }
+
     public static string FormatBytes(long bytes)
     {
         string[] units = ["B", "KB", "MB", "GB", "TB"];

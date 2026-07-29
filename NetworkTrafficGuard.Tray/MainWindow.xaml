@@ -10,6 +10,8 @@
         Icon="Assets/network-traffic-guard.ico"
         Background="#F3F5F7">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
         <Style x:Key="PanelBorder" TargetType="Border">
             <Setter Property="Background" Value="#FCFCFD" />
             <Setter Property="BorderBrush" Value="#D7DDE5" />
@@ -76,6 +78,14 @@
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconLucide Kind="Bell" Width="16" Height="16" Margin="0,0,8,0" />
                             <TextBlock Text="{Binding Texts.AlertSettingsTitle}" />
+                        </StackPanel>
+                    </MenuItem.Header>
+                </MenuItem>
+                <MenuItem Command="{Binding OpenMonthlyUsageSettingsCommand}">
+                    <MenuItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="Activity" Width="16" Height="16" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding Texts.MonthlyUsageSettingsTitle}" />
                         </StackPanel>
                     </MenuItem.Header>
                 </MenuItem>
@@ -299,7 +309,11 @@
                                             <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="0,2,0,8" />
                                             <TextBlock Text="{Binding RateText}" Margin="0,0,0,3" />
-                                            <TextBlock Text="{Binding MonthlyUsageText}" Style="{StaticResource MutedText}" FontSize="12" Margin="0,0,0,8" />
+                                            <TextBlock Text="{Binding MonthlyUsageText}"
+                                                       Style="{StaticResource MutedText}"
+                                                       FontSize="12"
+                                                       Margin="0,0,0,8"
+                                                       Visibility="{Binding DataContext.IsMonthlyTrafficUsageVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                             <Border BorderBrush="#E2E8F0"
                                                     BorderThickness="1"
                                                     CornerRadius="4"

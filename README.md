@@ -9,7 +9,7 @@ Languages: [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [
 - Tray UI for Windows network status.
 - Native Windows IP Helper API route reading.
 - Realtime per-interface traffic monitor.
-- Monthly traffic usage accounting.
+- Monthly traffic usage accounting with optional UI display.
 - Route priority ordering with optional Windows apply.
 - Wi-Fi enable and disable command from the settings menu.
 - Traffic threshold alerts through Windows notifications.

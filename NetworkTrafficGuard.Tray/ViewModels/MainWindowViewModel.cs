@@ -151,6 +151,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunCheckCommand = new AsyncRelayCommand(RunCheckAsync, () => !IsBusy);
         OpenSettingsCommand = new RelayCommand(OpenSettingsWindow);
         OpenAlertSettingsCommand = new RelayCommand(OpenAlertSettingsWindow);
+        OpenMonthlyUsageSettingsCommand = new RelayCommand(OpenMonthlyUsageSettingsWindow);
         ChangeCultureCommand = new RelayCommand<string>(ChangeCulture);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         SaveSelectedNetworkNameCommand = new RelayCommand(SaveSelectedNetworkName, () => SelectedRoute is not null);
@@ -176,6 +177,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IRelayCommand OpenSettingsCommand { get; }
 
     public IRelayCommand OpenAlertSettingsCommand { get; }
+
+    public IRelayCommand OpenMonthlyUsageSettingsCommand { get; }
 
     public IRelayCommand<string> ChangeCultureCommand { get; }
 
@@ -211,6 +214,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public Visibility RouteControlVisibility => string.IsNullOrWhiteSpace(RouteControlText)
         ? Visibility.Collapsed
         : Visibility.Visible;
+
+    public bool IsMonthlyTrafficUsageVisible => Settings.ShowMonthlyTrafficUsage;
 
     public string SecondaryConnectionDisplayName => _secondaryConnectionDisplayNameText;
 
@@ -345,6 +350,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
             AlertRouteKeys = [.. source.AlertRouteKeys],
             AlertThresholdKbps = source.AlertThresholdKbps,
+            ShowMonthlyTrafficUsage = source.ShowMonthlyTrafficUsage,
             Mode = source.Mode,
             EnableRouteChanges = false,
             EnableAdapterChanges = false,
@@ -615,6 +621,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
             AlertRouteKeys = [.. source.AlertRouteKeys],
             AlertThresholdKbps = source.AlertThresholdKbps,
+            ShowMonthlyTrafficUsage = source.ShowMonthlyTrafficUsage,
             Mode = source.Mode,
             EnableRouteChanges = source.EnableRouteChanges,
             EnableAdapterChanges = true,
@@ -848,6 +855,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    private void OpenMonthlyUsageSettingsWindow()
+    {
+        var owner = System.Windows.Application.Current.Windows
+            .OfType<Window>()
+            .FirstOrDefault(window => window.IsActive)
+            ?? System.Windows.Application.Current.MainWindow;
+
+        var monthlyUsageSettingsWindow = new MonthlyUsageSettingsWindow(Settings, _trafficUsageStore)
+        {
+            Owner = owner
+        };
+
+        var dialogResult = monthlyUsageSettingsWindow.ShowDialog();
+
+        if (dialogResult == true)
+        {
+            RefreshDisplayProperties();
+            RouteControlText = Texts.SettingsSaved;
+        }
+
+        if (monthlyUsageSettingsWindow.WasCleared)
+        {
+            ResetMonthlyUsageText();
+            RouteControlText = Texts.MonthlyTrafficUsageCleared;
+        }
+    }
+
     private void ChangeCulture(string? cultureName)
     {
         if (string.IsNullOrWhiteSpace(cultureName)
@@ -931,6 +965,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(OptionsSummary));
         OnPropertyChanged(nameof(Texts));
         OnPropertyChanged(nameof(SecondaryConnectionLabel));
+        OnPropertyChanged(nameof(IsMonthlyTrafficUsageVisible));
         OnPropertyChanged(nameof(EnableWifiMenuText));
         OnPropertyChanged(nameof(DisableWifiMenuText));
 
@@ -1316,6 +1351,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
         };
 
         return monitor;
+    }
+
+    private void ResetMonthlyUsageText()
+    {
+        if (_primaryTrafficMonitor is not null)
+        {
+            _primaryTrafficMonitor.MonthlyUsageText = FormatMonthlyUsageText(0, 0);
+        }
+
+        foreach (var monitor in TrafficMonitors)
+        {
+            monitor.MonthlyUsageText = FormatMonthlyUsageText(0, 0);
+        }
+
+        foreach (var monitor in _alertTrafficMonitors.Values)
+        {
+            monitor.MonthlyUsageText = FormatMonthlyUsageText(0, 0);
+        }
     }
 
     private void SyncAlertTrafficMonitors()

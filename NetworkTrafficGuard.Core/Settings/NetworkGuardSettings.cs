@@ -31,6 +31,8 @@ public sealed class NetworkGuardSettings
 
     public int AlertThresholdKbps { get; set; } = 100;
 
+    public bool ShowMonthlyTrafficUsage { get; set; }
+
     public GuardMode Mode { get; set; } = GuardMode.WarnOnly;
 
     public bool EnableRouteChanges { get; set; }
