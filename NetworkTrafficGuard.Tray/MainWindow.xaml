@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Network Traffic Guard" Height="720" Width="1040"
-        MinHeight="620" MinWidth="900"
+        Title="Network Traffic Guard" Height="760" Width="1120"
+        MinHeight="660" MinWidth="960"
         Background="#F3F5F7">
     <Window.Resources>
         <Style x:Key="PanelBorder" TargetType="Border">
@@ -24,134 +24,186 @@
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style TargetType="Button">
-            <Setter Property="MinWidth" Value="104" />
-            <Setter Property="Height" Value="36" />
-            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="MinWidth" Value="92" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="12,0" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinWidth" Value="220" />
+            <Setter Property="Margin" Value="0,4,0,10" />
         </Style>
     </Window.Resources>
 
-    <Grid Margin="18">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="Status">
+                <MenuItem Header="{Binding StatusText}" IsEnabled="False" />
+                <MenuItem Header="{Binding StatusDetail}" IsEnabled="False" />
+                <Separator />
+                <MenuItem Header="更新" Command="{Binding RunCheckCommand}" />
+            </MenuItem>
+            <MenuItem Header="設定">
+                <MenuItem StaysOpenOnClick="True">
+                    <MenuItem.Header>
+                        <StackPanel Width="280" Margin="4">
+                            <TextBlock Text="Wi-Fi 顯示名稱" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding EditableWifiDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="SIM 路由器名稱" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding EditableSimDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="電信商 / 回線名稱" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding EditableSimCarrierName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Gateway IP" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding EditableGatewayAddress, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Gateway 顯示名稱" Style="{StaticResource MutedText}" />
+                            <TextBox Text="{Binding EditableGatewayDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Content="儲存設定" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </MenuItem.Header>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="Wi-Fi">
+                <MenuItem Header="Wi-Fi 開啟" Command="{Binding EnableWifiCommand}" />
+                <MenuItem Header="Wi-Fi 關閉" Command="{Binding DisableWifiCommand}" />
+                <Separator />
+                <MenuItem Header="目前為 dry-run；EnableAdapterChanges=true 才會真的改網卡。" IsEnabled="False" />
+            </MenuItem>
+        </Menu>
 
-        <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,14">
-            <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding ActiveLineText}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="{Binding LastCheckedAt, StringFormat=更新: {0:yyyy-MM-dd HH:mm:ss}}"
-                           VerticalAlignment="Center" Style="{StaticResource MutedText}" Margin="0,0,14,0" />
-                <Button Content="更新" Command="{Binding RunCheckCommand}" />
-            </StackPanel>
-        </DockPanel>
+        <Grid Margin="18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <Grid Grid.Row="1" Margin="0,0,0,14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="Wi-Fi" Style="{StaticResource MutedText}" />
-                    <TextBlock Grid.Row="1" Text="{Binding WifiDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
-                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
-                        <TextBlock Text="{Binding WifiStatusText}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="モバイルデータ通信（主回線）" Style="{StaticResource MutedText}" />
-                    <TextBlock Grid.Row="1" Text="{Binding MobileDataDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
-                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
-                        <TextBlock Text="{Binding MobileDataStatusText}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding MobileDataDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
-                <StackPanel>
-                    <TextBlock Text="選項" Style="{StaticResource MutedText}" />
-                    <TextBlock Text="{Binding StatusText}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
-                    <TextBlock Text="{Binding OptionsSummary}" Margin="0,10,0,0" />
-                    <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
+            <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,14">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ActiveLineText}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
                 </StackPanel>
-            </Border>
-        </Grid>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding LastCheckedAt, StringFormat=更新: {0:yyyy-MM-dd HH:mm:ss}}"
+                               VerticalAlignment="Center" Style="{StaticResource MutedText}" Margin="0,0,14,0" />
+                    <Button Content="更新" Command="{Binding RunCheckCommand}" />
+                </StackPanel>
+            </DockPanel>
 
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="1*" />
-            </Grid.ColumnDefinitions>
+            <Grid Grid.Row="1" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="Default Routes" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12" />
-                    <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding Routes}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              CanUserAddRows="False"
-                              CanUserDeleteRows="False"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              RowHeaderWidth="0">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="" Binding="{Binding Role}" Width="58" />
-                            <DataGridTextColumn Header="Prefix" Binding="{Binding DestinationPrefix}" Width="112" />
-                            <DataGridTextColumn Header="Next hop" Binding="{Binding NextHop}" Width="220" />
-                            <DataGridTextColumn Header="Interface" Binding="{Binding Interface}" Width="*" />
-                            <DataGridTextColumn Header="Route" Binding="{Binding RouteMetric}" Width="72" />
-                            <DataGridTextColumn Header="IF" Binding="{Binding InterfaceMetric}" Width="72" />
-                            <DataGridTextColumn Header="Total" Binding="{Binding TotalMetric}" Width="78" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </Border>
-
-            <StackPanel Grid.Column="2">
-                <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
-                    <StackPanel>
-                        <TextBlock Text="Status" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
-                        <TextBlock Text="{Binding StatusDetail}" />
-                        <TextBlock Text="{Binding BestRouteText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
-                    </StackPanel>
+                <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Wi-Fi" Style="{StaticResource MutedText}" />
+                        <TextBlock Grid.Row="1" Text="{Binding WifiDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                            <TextBlock Text="{Binding WifiStatusText}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <Button Content="開啟" Command="{Binding EnableWifiCommand}" Margin="0,0,8,0" />
+                                <Button Content="關閉" Command="{Binding DisableWifiCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
-                <Border Style="{StaticResource PanelBorder}">
+                <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="{Binding RouterLineLabel}" Style="{StaticResource MutedText}" />
+                        <TextBlock Grid.Row="1" Text="{Binding RouterDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                            <TextBlock Text="{Binding MobileDataStatusText}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding MobileDataDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
                     <StackPanel>
-                        <TextBlock Text="設定" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
-                        <TextBlock Text="{Binding SettingsSummary}" />
+                        <TextBlock Text="選項" Style="{StaticResource MutedText}" />
+                        <TextBlock Text="{Binding StatusText}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding OptionsSummary}" Margin="0,10,0,0" />
+                        <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
                     </StackPanel>
                 </Border>
-            </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="1*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock DockPanel.Dock="Left" Text="使用優先順序" FontSize="17" FontWeight="SemiBold" />
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="上移" Command="{Binding MoveRouteUpCommand}" Margin="0,0,8,0" />
+                                <Button Content="下移" Command="{Binding MoveRouteDownCommand}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding Routes}"
+                                  SelectedItem="{Binding SelectedRoute, Mode=TwoWay}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  RowHeaderWidth="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="" Binding="{Binding Role}" Width="58" />
+                                <DataGridTextColumn Header="Prefix" Binding="{Binding DestinationPrefix}" Width="112" />
+                                <DataGridTextColumn Header="Next hop" Binding="{Binding NextHop}" Width="220" />
+                                <DataGridTextColumn Header="Interface" Binding="{Binding Interface}" Width="*" />
+                                <DataGridTextColumn Header="Route" Binding="{Binding RouteMetric}" Width="72" />
+                                <DataGridTextColumn Header="IF" Binding="{Binding InterfaceMetric}" Width="72" />
+                                <DataGridTextColumn Header="Total" Binding="{Binding TotalMetric}" Width="78" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                            <TextBlock Text="{Binding TrafficRateText}" />
+                            <TextBlock Text="{Binding TrafficSparkline}" FontSize="28" FontFamily="Consolas" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource PanelBorder}">
+                        <StackPanel>
+                            <TextBlock Text="現在の経路" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                            <TextBlock Text="{Binding StatusDetail}" />
+                            <TextBlock Text="{Binding BestRouteText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
         </Grid>
-    </Grid>
+    </DockPanel>
 </Window>

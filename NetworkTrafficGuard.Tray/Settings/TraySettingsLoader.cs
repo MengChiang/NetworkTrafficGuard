@@ -15,7 +15,7 @@ public static class TraySettingsLoader
 
     public static NetworkGuardSettings Load()
     {
-        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        var settingsPath = GetSettingsPath();
 
         if (!File.Exists(settingsPath))
         {
@@ -25,5 +25,21 @@ public static class TraySettingsLoader
         var json = File.ReadAllText(settingsPath);
         return JsonSerializer.Deserialize<NetworkGuardSettings>(json, JsonOptions)
             ?? new NetworkGuardSettings();
+    }
+
+    public static void Save(NetworkGuardSettings settings)
+    {
+        var settingsPath = GetSettingsPath();
+        var writeOptions = new JsonSerializerOptions(JsonOptions)
+        {
+            WriteIndented = true
+        };
+        var json = JsonSerializer.Serialize(settings, writeOptions);
+        File.WriteAllText(settingsPath, json);
+    }
+
+    private static string GetSettingsPath()
+    {
+        return Path.Combine(AppContext.BaseDirectory, "appsettings.json");
     }
 }

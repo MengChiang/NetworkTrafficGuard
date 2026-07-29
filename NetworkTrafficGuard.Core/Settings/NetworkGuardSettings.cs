@@ -27,6 +27,8 @@ public sealed class NetworkGuardSettings
 
     public bool EnableRouteChanges { get; set; }
 
+    public bool EnableAdapterChanges { get; set; }
+
     public int CheckIntervalSeconds { get; set; } = DefaultCheckIntervalSeconds;
 
     public string CultureName { get; set; } = SupportedCultures.DefaultCultureName;
