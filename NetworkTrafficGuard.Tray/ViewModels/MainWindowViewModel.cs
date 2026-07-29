@@ -34,6 +34,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly HashSet<string> _alertRouteKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TrafficMonitorViewModel> _alertTrafficMonitors = new(StringComparer.OrdinalIgnoreCase);
     private bool _isWifiRouteAvailable;
+    private bool _isMobileDataRouteAvailable;
     private string? _wifiRouteKey;
     private DateTimeOffset? _lastTrafficAlertAt;
     private bool _networkRefreshQueued;
@@ -193,7 +194,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         $"回線 {Settings.SimDisplayName} / {Settings.SimCarrierName} ({Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}) | " +
         $"Mode {Settings.Mode} | Route changes {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter changes {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
 
-    public string WifiDisplayName => Settings.PrimaryWifiDisplayName;
+    public string WifiDisplayName => _isWifiRouteAvailable ? Settings.PrimaryWifiDisplayName : string.Empty;
 
     public UiText Texts => UiTextProvider.Get(Settings.CultureName);
 
@@ -203,7 +204,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ? Visibility.Collapsed
         : Visibility.Visible;
 
-    public string RouterDisplayName => Settings.SimDisplayName;
+    public string RouterDisplayName => _isMobileDataRouteAvailable ? Settings.SimDisplayName : string.Empty;
 
     public string MobileDataCarrierName => Settings.SimCarrierName;
 
@@ -355,10 +356,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
         _isWifiRouteAvailable = wifiRoute is not null && IsWifiAdapterConnected(wifiAdapterStatus);
+        _isMobileDataRouteAvailable = mobileDataRoute is not null;
         _wifiRouteKey = wifiRoute is null
             ? null
             : CreateRouteKey(wifiRoute.InterfaceIndex, wifiRoute.NextHop);
         _lastWifiAdapterStateKey = CreateAdapterStatusKey(wifiAdapterStatus);
+        OnPropertyChanged(nameof(WifiDisplayName));
+        OnPropertyChanged(nameof(RouterDisplayName));
 
         if (!_isSwitchingWifiAdapter)
         {
@@ -370,7 +374,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         MobileDataStatusText = mobileDataRoute is null ? Texts.NotConnected : Texts.InUse;
         MobileDataDetailText = mobileDataRoute is null
-            ? Texts.GatewayNotDetected
+            ? string.Empty
             : FormatNextHop(mobileDataRoute.NextHop);
 
         ActiveLineText = bestRoute is null
@@ -388,13 +392,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IReadOnlyList<DefaultRouteInfo> routes,
         AdapterStatusResult wifiAdapterStatus)
     {
-        if (IsWifiAdapterConnected(wifiAdapterStatus))
-        {
-            return routes;
-        }
-
         return routes
-            .Where(route => !IsWifiRoute(route))
+            .Where(route => IsWifiRoute(route)
+                ? IsWifiAdapterConnected(wifiAdapterStatus)
+                : IsRouteInterfaceConnected(route))
             .ToList();
     }
 
@@ -437,6 +438,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         return adapterStatus.Exists
             && string.Equals(adapterStatus.Status, "Up", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsRouteInterfaceConnected(DefaultRouteInfo route)
+    {
+        return FindNetworkInterface(route.InterfaceIndex)?.OperationalStatus == OperationalStatus.Up;
     }
 
     private async Task<AdapterStatusResult> GetWifiAdapterStatusAsync()
@@ -498,7 +504,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string FormatWifiDetailText(DefaultRouteInfo? wifiRoute)
     {
         return wifiRoute is null
-            ? Texts.GatewayNotDetected
+            ? string.Empty
             : FormatNextHop(wifiRoute.NextHop);
     }
 
