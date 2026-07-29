@@ -21,7 +21,7 @@ public partial class SettingsWindow : Window, INotifyPropertyChanged
         Rows = new ObservableCollection<NetworkNameMappingRowViewModel>(
             routes
                 .GroupBy(route => $"{route.InterfaceIndex}|{route.RawGateway}")
-                .Select(group => new NetworkNameMappingRowViewModel(group.First())));
+                .Select(group => new NetworkNameMappingRowViewModel(group.First(), _settings)));
         EnableAdapterChanges = _settings.EnableAdapterChanges;
         EnableRouteChanges = _settings.EnableRouteChanges;
         DataContext = this;
