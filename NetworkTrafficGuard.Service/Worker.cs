@@ -8,6 +8,7 @@ using NetworkTrafficGuard.Core.Settings;
 public sealed class Worker(
     ILogger<Worker> logger,
     IRouteReader routeReader,
+    IRouteController routeController,
     INetworkPolicyEngine policyEngine,
     IOptionsMonitor<NetworkGuardSettings> settingsMonitor,
     IConfiguration configuration,
@@ -30,6 +31,21 @@ public sealed class Worker(
                     result.Message,
                     result.ShouldNotify,
                     result.ShouldBlockSimRoute);
+
+                if (result.ShouldBlockSimRoute)
+                {
+                    var routeControlResult = await routeController.RemoveSimDefaultRoutesAsync(
+                        routes,
+                        settings,
+                        stoppingToken);
+
+                    logger.LogWarning(
+                        "Route control result: {Message} DryRun={IsDryRun}, Matched={MatchedRouteCount}, Changed={ChangedRouteCount}",
+                        routeControlResult.Message,
+                        routeControlResult.IsDryRun,
+                        routeControlResult.MatchedRouteCount,
+                        routeControlResult.ChangedRouteCount);
+                }
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {

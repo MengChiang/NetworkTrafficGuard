@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NetworkTrafficGuard.Core\NetworkTrafficGuard.Core.csproj" />
+    <ProjectReference Include="..\NetworkTrafficGuard.Service\NetworkTrafficGuard.Service.csproj" />
   </ItemGroup>
 
 </Project>

@@ -17,6 +17,8 @@ public sealed class NetworkGuardSettings
 
     public GuardMode Mode { get; set; } = GuardMode.WarnOnly;
 
+    public bool EnableRouteChanges { get; set; }
+
     public int CheckIntervalSeconds { get; set; } = DefaultCheckIntervalSeconds;
 
     public string CultureName { get; set; } = SupportedCultures.DefaultCultureName;

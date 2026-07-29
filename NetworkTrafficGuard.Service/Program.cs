@@ -7,6 +7,7 @@ using NetworkTrafficGuard.Service.Windows;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.Configure<NetworkGuardSettings>(builder.Configuration);
 builder.Services.AddSingleton<IRouteReader, PowerShellRouteReader>();
+builder.Services.AddSingleton<IRouteController, PowerShellRouteController>();
 builder.Services.AddSingleton<INetworkPolicyEngine, NetworkPolicyEngine>();
 builder.Services.AddHostedService<Worker>();
 
