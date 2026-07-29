@@ -4,6 +4,10 @@ public sealed record UiText
 {
     public required string Settings { get; init; }
 
+    public required string ShowWindow { get; init; }
+
+    public required string ExitApplication { get; init; }
+
     public required string AppTitle { get; init; }
 
     public required string WifiLabel { get; init; }

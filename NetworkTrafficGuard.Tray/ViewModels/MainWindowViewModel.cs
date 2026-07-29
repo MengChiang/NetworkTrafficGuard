@@ -27,6 +27,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private int? _bestInterfaceIndex;
     private string? _selectedRouteKey;
     private bool _isSwitchingWifiAdapter;
+    private string _primaryTrafficName = "Network Traffic Guard";
+    private TrafficMonitorViewModel? _primaryTrafficMonitor;
     private readonly HashSet<string> _monitoredRouteKeys = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty]
@@ -70,6 +72,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<TrafficMonitorViewModel> _trafficMonitors = [];
+
+    [ObservableProperty]
+    private string _trayToolTipText = "Network Traffic Guard";
 
     [ObservableProperty]
     private string _editableWifiDisplayName = string.Empty;
@@ -331,6 +336,43 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 : isWifiActive
                     ? string.Format(Texts.PrimaryLineFormat, Settings.PrimaryWifiDisplayName)
                     : string.Format(Texts.PrimaryLineFormat, $"#{bestRoute.InterfaceIndex}");
+
+        UpdatePrimaryTrafficMonitor(bestRoute, isMobileDataActive, isWifiActive);
+    }
+
+    private void UpdatePrimaryTrafficMonitor(
+        DefaultRouteInfo? bestRoute,
+        bool isMobileDataActive,
+        bool isWifiActive)
+    {
+        if (bestRoute is null)
+        {
+            _primaryTrafficName = Texts.NoPrimaryLine;
+            _primaryTrafficMonitor = null;
+            TrayToolTipText = _primaryTrafficName;
+            return;
+        }
+
+        _primaryTrafficName = isMobileDataActive
+            ? Settings.SimDisplayName
+            : isWifiActive
+                ? Settings.PrimaryWifiDisplayName
+                : $"#{bestRoute.InterfaceIndex}";
+
+        var key = CreateRouteKey(bestRoute.InterfaceIndex, bestRoute.NextHop);
+
+        if (_primaryTrafficMonitor is not null && string.Equals(_primaryTrafficMonitor.Key, key, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateTrayToolTipText();
+            return;
+        }
+
+        _primaryTrafficMonitor = new TrafficMonitorViewModel(
+            key,
+            bestRoute.InterfaceIndex,
+            _primaryTrafficName,
+            string.Empty);
+        UpdateTrayToolTipText();
     }
 
     private async Task<AdapterStatusResult> GetWifiAdapterStatusAsync()
@@ -640,10 +682,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void OpenSettingsWindow()
     {
-        var owner = Application.Current.Windows
+        var owner = System.Windows.Application.Current.Windows
             .OfType<Window>()
             .FirstOrDefault(window => window.IsActive)
-            ?? Application.Current.MainWindow;
+            ?? System.Windows.Application.Current.MainWindow;
 
         var settingsWindow = new SettingsWindow(Settings, Routes)
         {
@@ -775,15 +817,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void SampleTraffic()
     {
-        if (TrafficMonitors.Count == 0)
+        if (_primaryTrafficMonitor is not null)
         {
-            return;
+            SampleTraffic(_primaryTrafficMonitor);
+            UpdateTrayToolTipText();
         }
 
         foreach (var monitor in TrafficMonitors)
         {
             SampleTraffic(monitor);
         }
+    }
+
+    private void UpdateTrayToolTipText()
+    {
+        var rateText = _primaryTrafficMonitor?.RateText ?? string.Empty;
+        TrayToolTipText = string.IsNullOrWhiteSpace(rateText)
+            ? _primaryTrafficName
+            : $"{_primaryTrafficName}  {rateText}";
     }
 
     private static void SampleTraffic(TrafficMonitorViewModel monitor)

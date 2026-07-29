@@ -39,7 +39,7 @@ public sealed partial class TrafficMonitorViewModel(
     public DateTimeOffset? LastSampledAt { get; set; }
 
     [ObservableProperty]
-    private string _rateText = "等待資料";
+    private string _rateText = "↓ 0 bps / ↑ 0 bps";
 
     [ObservableProperty]
     private string _sparkline = EmptySparkline;

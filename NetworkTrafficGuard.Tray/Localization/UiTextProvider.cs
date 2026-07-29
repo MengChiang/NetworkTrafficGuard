@@ -28,6 +28,8 @@ public static class UiTextProvider
     private static UiText TraditionalChinese { get; } = new()
     {
         Settings = "設定",
+        ShowWindow = "顯示",
+        ExitApplication = "結束",
         AppTitle = "網路狀態",
         WifiLabel = "Wi-Fi",
         SimRouterLineLabel = "行動網路路由器",
@@ -78,6 +80,8 @@ public static class UiTextProvider
     private static UiText SimplifiedChinese { get; } = TraditionalChinese with
     {
         Settings = "设置",
+        ShowWindow = "显示",
+        ExitApplication = "退出",
         AppTitle = "网络状态",
         SimRouterLineLabel = "移动网络路由器",
         PriorityTitle = "连接优先顺序",
@@ -124,6 +128,8 @@ public static class UiTextProvider
     private static UiText Japanese { get; } = TraditionalChinese with
     {
         Settings = "設定",
+        ShowWindow = "表示",
+        ExitApplication = "終了",
         AppTitle = "ネットワーク状態",
         SimRouterLineLabel = "モバイルルーター",
         PriorityTitle = "接続の優先順位",
@@ -173,6 +179,8 @@ public static class UiTextProvider
     private static UiText English { get; } = TraditionalChinese with
     {
         Settings = "Settings",
+        ShowWindow = "Show",
+        ExitApplication = "Exit",
         AppTitle = "Network Status",
         SimRouterLineLabel = "Mobile Router",
         PriorityTitle = "Connection Priority",
