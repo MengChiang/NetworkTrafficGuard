@@ -23,6 +23,7 @@ public partial class MainWindow : Window
 
         _notifyIcon = CreateNotifyIcon();
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        _viewModel.TrafficAlertRaised += ViewModel_TrafficAlertRaised;
         StateChanged += MainWindow_StateChanged;
         Closing += MainWindow_Closing;
         Closed += MainWindow_Closed;
@@ -78,6 +79,24 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ViewModel_TrafficAlertRaised(object? sender, TrafficAlertEventArgs e)
+    {
+        _notifyIcon.ShowBalloonTip(
+            10000,
+            e.Title,
+            e.Message,
+            Forms.ToolTipIcon.Warning);
+
+        RestoreFromTray();
+
+        System.Windows.MessageBox.Show(
+            this,
+            e.Message,
+            e.Title,
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
         if (WindowState == WindowState.Minimized)
@@ -100,6 +119,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closed(object? sender, EventArgs e)
     {
+        _viewModel.TrafficAlertRaised -= ViewModel_TrafficAlertRaised;
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();

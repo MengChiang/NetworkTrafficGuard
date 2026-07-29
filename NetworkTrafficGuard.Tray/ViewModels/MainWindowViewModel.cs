@@ -34,6 +34,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly Dictionary<string, TrafficMonitorViewModel> _alertTrafficMonitors = new(StringComparer.OrdinalIgnoreCase);
     private bool _isWifiRouteAvailable;
     private DateTimeOffset? _lastTrafficAlertAt;
+    private bool _networkRefreshQueued;
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -153,7 +154,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         UpdateAdapterControlStatus();
         StartAutoRefresh();
         StartTrafficTimer();
+        StartNetworkChangeRefresh();
     }
+
+    public event EventHandler<TrafficAlertEventArgs>? TrafficAlertRaised;
 
     public IAsyncRelayCommand RunCheckCommand { get; }
 
@@ -438,7 +442,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         return adapterStatus.Status switch
         {
-            "Up" => Texts.Connected,
+            "Up" => Texts.NotConnected,
             "Disconnected" => Texts.NotConnected,
             "Disabled" => Texts.Disabled,
             "Not Present" => Texts.NotPresent,
@@ -725,6 +729,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SaveRoutePreferences();
         SelectedRoute = route;
         SyncAlertTrafficMonitors();
+        RouteControlText = route.IsAlertEnabled
+            ? string.Format(Texts.AlertEnabledNoticeFormat, route.NetworkName, Math.Max(1, Settings.AlertThresholdKbps))
+            : string.Format(Texts.AlertDisabledNoticeFormat, route.NetworkName);
     }
 
     private void LoadEditableSettings()
@@ -892,6 +899,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _ = RunCheckAsync();
     }
 
+    private void StartNetworkChangeRefresh()
+    {
+        NetworkChange.NetworkAddressChanged += (_, _) => QueueNetworkRefresh();
+        NetworkChange.NetworkAvailabilityChanged += (_, _) => QueueNetworkRefresh();
+    }
+
+    private void QueueNetworkRefresh()
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        if (dispatcher is null || _networkRefreshQueued)
+        {
+            return;
+        }
+
+        _networkRefreshQueued = true;
+        _ = dispatcher.InvokeAsync(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(700));
+            _networkRefreshQueued = false;
+
+            if (!IsBusy)
+            {
+                await RunCheckAsync();
+            }
+        });
+    }
+
     private void SampleTraffic()
     {
         if (_primaryTrafficMonitor is not null)
@@ -1003,26 +1038,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _lastTrafficAlertAt = now;
 
-        var owner = System.Windows.Application.Current.MainWindow;
-
-        if (owner is not null)
-        {
-            owner.ShowInTaskbar = true;
-            owner.Show();
-            owner.WindowState = WindowState.Normal;
-            owner.Activate();
-        }
-
-        System.Windows.MessageBox.Show(
-            owner,
-            string.Format(
+        TrafficAlertRaised?.Invoke(
+            this,
+            new TrafficAlertEventArgs(
+                Texts.TrafficAlertTitle,
+                string.Format(
                 Texts.TrafficAlertMessageFormat,
                 route.NetworkName,
                 FormatBitsPerSecond(totalBps),
-                Math.Max(1, Settings.AlertThresholdKbps)),
-            Texts.TrafficAlertTitle,
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
+                Math.Max(1, Settings.AlertThresholdKbps))));
     }
 
     private void SyncTrafficMonitors()

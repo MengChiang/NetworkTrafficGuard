@@ -111,4 +111,8 @@ public sealed record UiText
     public required string TrafficAlertTitle { get; init; }
 
     public required string TrafficAlertMessageFormat { get; init; }
+
+    public required string AlertEnabledNoticeFormat { get; init; }
+
+    public required string AlertDisabledNoticeFormat { get; init; }
 }
