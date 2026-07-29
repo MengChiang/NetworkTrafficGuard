@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly INetworkPolicyEngine _policyEngine;
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly DispatcherTimer _trafficTimer = new();
+    private readonly DispatcherTimer _adapterStatusTimer = new();
     private int? _bestInterfaceIndex;
     private string? _selectedRouteKey;
     private bool _isSwitchingWifiAdapter;
@@ -33,8 +34,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly HashSet<string> _alertRouteKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TrafficMonitorViewModel> _alertTrafficMonitors = new(StringComparer.OrdinalIgnoreCase);
     private bool _isWifiRouteAvailable;
+    private string? _wifiRouteKey;
     private DateTimeOffset? _lastTrafficAlertAt;
     private bool _networkRefreshQueued;
+    private bool _adapterStatusRefreshRunning;
+    private string? _lastWifiAdapterStateKey;
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -155,6 +159,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StartAutoRefresh();
         StartTrafficTimer();
         StartNetworkChangeRefresh();
+        StartAdapterStatusMonitor();
     }
 
     public event EventHandler<TrafficAlertEventArgs>? TrafficAlertRaised;
@@ -349,6 +354,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
         _isWifiRouteAvailable = wifiRoute is not null && wifiAdapterStatus.IsEnabled;
+        _wifiRouteKey = wifiRoute is null
+            ? null
+            : CreateRouteKey(wifiRoute.InterfaceIndex, wifiRoute.NextHop);
+        _lastWifiAdapterStateKey = CreateAdapterStatusKey(wifiAdapterStatus);
 
         if (!_isSwitchingWifiAdapter)
         {
@@ -516,7 +525,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var result = await _adapterController.SetAdapterEnabledAsync(
                 Settings.PrimaryWifiInterfaceAlias,
                 enabled,
-                Settings,
+                CreateAdapterControlSettings(Settings),
                 CancellationToken.None);
 
             var commandResultText = result.IsDryRun
@@ -560,6 +569,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private Task SetWifiEnabledAsync(bool? enabled)
     {
         return SetWifiEnabledAsync(enabled ?? false);
+    }
+
+    private static NetworkGuardSettings CreateAdapterControlSettings(NetworkGuardSettings source)
+    {
+        return new NetworkGuardSettings
+        {
+            PrimaryWifiInterfaceAlias = source.PrimaryWifiInterfaceAlias,
+            PrimaryWifiInterfaceIndex = source.PrimaryWifiInterfaceIndex,
+            SimInterfaceAlias = source.SimInterfaceAlias,
+            SimInterfaceIndex = source.SimInterfaceIndex,
+            PrimaryWifiDisplayName = source.PrimaryWifiDisplayName,
+            SimDisplayName = source.SimDisplayName,
+            SimCarrierName = source.SimCarrierName,
+            GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
+            RoutePriorities = new Dictionary<string, int>(source.RoutePriorities, StringComparer.OrdinalIgnoreCase),
+            MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
+            AlertRouteKeys = [.. source.AlertRouteKeys],
+            AlertThresholdKbps = source.AlertThresholdKbps,
+            Mode = source.Mode,
+            EnableRouteChanges = source.EnableRouteChanges,
+            EnableAdapterChanges = true,
+            CheckIntervalSeconds = source.CheckIntervalSeconds,
+            CultureName = source.CultureName,
+            AllowedWifiSsids = [.. source.AllowedWifiSsids]
+        };
     }
 
     private IReadOnlyList<DefaultRouteInfo> ApplySavedRoutePriorities(IReadOnlyList<DefaultRouteInfo> routes)
@@ -905,6 +939,63 @@ public sealed partial class MainWindowViewModel : ObservableObject
         NetworkChange.NetworkAvailabilityChanged += (_, _) => QueueNetworkRefresh();
     }
 
+    private void StartAdapterStatusMonitor()
+    {
+        _adapterStatusTimer.Interval = TimeSpan.FromSeconds(1);
+        _adapterStatusTimer.Tick += async (_, _) => await RefreshWifiAdapterStatusIfChangedAsync();
+        _adapterStatusTimer.Start();
+    }
+
+    private async Task RefreshWifiAdapterStatusIfChangedAsync()
+    {
+        if (_adapterStatusRefreshRunning)
+        {
+            return;
+        }
+
+        _adapterStatusRefreshRunning = true;
+
+        try
+        {
+            var status = await GetWifiAdapterStatusAsync();
+            var stateKey = CreateAdapterStatusKey(status);
+
+            if (_lastWifiAdapterStateKey is null)
+            {
+                _lastWifiAdapterStateKey = stateKey;
+                return;
+            }
+
+            if (string.Equals(_lastWifiAdapterStateKey, stateKey, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _lastWifiAdapterStateKey = stateKey;
+            _isSwitchingWifiAdapter = false;
+            WifiStatusText = FormatWifiStatusText(status, _wifiRouteKey is not null);
+            IsWifiToggleChecked = status.IsEnabled;
+
+            if (!IsBusy)
+            {
+                await RunCheckAsync();
+            }
+            else
+            {
+                QueueNetworkRefresh();
+            }
+        }
+        finally
+        {
+            _adapterStatusRefreshRunning = false;
+        }
+    }
+
+    private static string CreateAdapterStatusKey(AdapterStatusResult status)
+    {
+        return $"{status.Exists}|{status.Name}|{status.Status}|{status.InterfaceIndex}";
+    }
+
     private void QueueNetworkRefresh()
     {
         var dispatcher = System.Windows.Application.Current?.Dispatcher;
@@ -992,7 +1083,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void SampleAlertTraffic()
     {
-        if (_isWifiRouteAvailable || _alertRouteKeys.Count == 0)
+        if (_alertRouteKeys.Count == 0)
         {
             return;
         }
@@ -1013,12 +1104,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             var totalBps = SampleTraffic(monitor);
 
-            if (totalBps is not null && totalBps.Value >= GetAlertThresholdBps())
+            if (totalBps is not null
+                && totalBps.Value >= GetAlertThresholdBps()
+                && ShouldRaiseTrafficAlert(routeKey))
             {
                 ShowTrafficAlert(route, totalBps.Value);
                 return;
             }
         }
+    }
+
+    private bool ShouldRaiseTrafficAlert(string routeKey)
+    {
+        return !_isWifiRouteAvailable
+            || !string.Equals(routeKey, _wifiRouteKey, StringComparison.OrdinalIgnoreCase);
     }
 
     private double GetAlertThresholdBps()

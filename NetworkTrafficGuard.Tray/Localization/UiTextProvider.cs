@@ -81,7 +81,7 @@ public static class UiTextProvider
         WifiUpdatingFormat = "{0} Wi-Fi 中...",
         AdapterStateMismatchFormat = "{0} Wi-Fi 指令已送出，目前介面狀態為 {1}。",
         TrafficAlertTitle = "網路流量異常",
-        TrafficAlertMessageFormat = "Wi-Fi 目前未作為可用連線，{0} 的流量已達 {1}，超過警示門檻 {2} Kbps。",
+        TrafficAlertMessageFormat = "{0} 的即時流量已達 {1}，超過警示門檻 {2} Kbps。",
         AlertEnabledNoticeFormat = "已啟用警示：{0}（門檻 {1} Kbps）。",
         AlertDisabledNoticeFormat = "已停用警示：{0}。"
     };
@@ -138,7 +138,7 @@ public static class UiTextProvider
         DisableAction = "停用",
         AdapterStateMismatchFormat = "{0} Wi-Fi 指令已发送，当前接口状态为 {1}。",
         TrafficAlertTitle = "网络流量异常",
-        TrafficAlertMessageFormat = "Wi-Fi 当前不是可用连接，{0} 的流量已达到 {1}，超过警示阈值 {2} Kbps。",
+        TrafficAlertMessageFormat = "{0} 的实时流量已达到 {1}，超过警示阈值 {2} Kbps。",
         AlertEnabledNoticeFormat = "已启用警示：{0}（阈值 {1} Kbps）。",
         AlertDisabledNoticeFormat = "已停用警示：{0}。"
     };
@@ -198,7 +198,7 @@ public static class UiTextProvider
         WifiUpdatingFormat = "Wi-Fi を{0}しています...",
         AdapterStateMismatchFormat = "Wi-Fi の{0}コマンドを送信しました。現在の状態は {1} です。",
         TrafficAlertTitle = "ネットワーク通信量の異常",
-        TrafficAlertMessageFormat = "Wi-Fi は現在利用可能な接続ではありません。{0} の通信量が {1} に達し、警告しきい値 {2} Kbps を超えました。",
+        TrafficAlertMessageFormat = "{0} のリアルタイム通信量が {1} に達し、警告しきい値 {2} Kbps を超えました。",
         AlertEnabledNoticeFormat = "警告を有効にしました: {0}（しきい値 {1} Kbps）。",
         AlertDisabledNoticeFormat = "警告を無効にしました: {0}。"
     };
@@ -258,7 +258,7 @@ public static class UiTextProvider
         WifiUpdatingFormat = "{0} Wi-Fi...",
         AdapterStateMismatchFormat = "{0} Wi-Fi command was sent. Current interface state is {1}.",
         TrafficAlertTitle = "Network Traffic Alert",
-        TrafficAlertMessageFormat = "Wi-Fi is not currently available. {0} traffic reached {1}, exceeding the alert threshold of {2} Kbps.",
+        TrafficAlertMessageFormat = "{0} realtime traffic reached {1}, exceeding the alert threshold of {2} Kbps.",
         AlertEnabledNoticeFormat = "Alert enabled: {0} (threshold {1} Kbps).",
         AlertDisabledNoticeFormat = "Alert disabled: {0}."
     };
