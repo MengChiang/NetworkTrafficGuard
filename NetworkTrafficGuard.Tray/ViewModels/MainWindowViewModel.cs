@@ -444,7 +444,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return Texts.Unknown;
         }
 
-        if (hasWifiRoute)
+        if (string.Equals(adapterStatus.Status, "Disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.Disabled;
+        }
+
+        if (string.Equals(adapterStatus.Status, "Not Present", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.NotPresent;
+        }
+
+        if (string.Equals(adapterStatus.Status, "Disconnected", StringComparison.OrdinalIgnoreCase))
+        {
+            return Texts.NotConnected;
+        }
+
+        if (hasWifiRoute && adapterStatus.IsEnabled)
         {
             return Texts.InUse;
         }

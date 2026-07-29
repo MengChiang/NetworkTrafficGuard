@@ -86,15 +86,6 @@ public partial class MainWindow : Window
             e.Title,
             e.Message,
             Forms.ToolTipIcon.Warning);
-
-        RestoreFromTray();
-
-        System.Windows.MessageBox.Show(
-            this,
-            e.Message,
-            e.Title,
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
     }
 
     private void MainWindow_StateChanged(object? sender, EventArgs e)
