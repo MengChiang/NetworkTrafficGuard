@@ -8,24 +8,39 @@ public sealed class RouteRowViewModel(
     bool isBestRoute,
     NetworkGuardSettings settings)
 {
-    public string DestinationPrefix { get; } = route.DestinationPrefix;
+    public string Role { get; } = isBestRoute ? "主回線" : "";
 
-    public string NextHop { get; } = FormatNextHop(route.NextHop, settings);
+    public string NetworkName { get; } = FormatNetworkName(route, settings);
+
+    public string Gateway { get; } = FormatNextHop(route.NextHop, settings);
 
     public string Interface { get; } = $"{route.InterfaceAlias} #{route.InterfaceIndex}";
 
-    public uint RouteMetric { get; } = route.RouteMetric;
-
-    public uint InterfaceMetric { get; } = route.InterfaceMetric;
-
-    public uint TotalMetric { get; } = route.TotalMetric;
-
-    public string Role { get; } = isBestRoute ? "Best" : "";
+    public string AddressFamily { get; } = route.DestinationPrefix == "::/0" ? "IPv6" : "IPv4";
 
     private static string FormatNextHop(string nextHop, NetworkGuardSettings settings)
     {
         return settings.GatewayDisplayNames.TryGetValue(nextHop, out var displayName)
             ? $"{displayName} ({nextHop})"
             : nextHop;
+    }
+
+    private static string FormatNetworkName(DefaultRouteInfo route, NetworkGuardSettings settings)
+    {
+        if (settings.PrimaryWifiInterfaceIndex == route.InterfaceIndex
+            || string.Equals(route.InterfaceAlias, settings.PrimaryWifiInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+        {
+            return settings.PrimaryWifiDisplayName;
+        }
+
+        if (settings.SimInterfaceIndex == route.InterfaceIndex
+            || string.Equals(route.InterfaceAlias, settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(settings.SimCarrierName)
+                ? settings.SimDisplayName
+                : $"{settings.SimDisplayName} / {settings.SimCarrierName}";
+        }
+
+        return route.InterfaceAlias;
     }
 }

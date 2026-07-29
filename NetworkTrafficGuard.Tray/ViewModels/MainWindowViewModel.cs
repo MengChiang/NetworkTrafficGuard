@@ -20,6 +20,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IRouteController _routeController;
     private readonly IAdapterController _adapterController;
     private readonly INetworkPolicyEngine _policyEngine;
+    private readonly DispatcherTimer _refreshTimer = new();
     private readonly DispatcherTimer _trafficTimer = new();
     private readonly Queue<double> _trafficSamples = new();
     private int? _activeInterfaceIndex;
@@ -119,6 +120,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveRouteUpCommand = new RelayCommand(MoveSelectedRouteUp, () => SelectedRoute is not null);
         MoveRouteDownCommand = new RelayCommand(MoveSelectedRouteDown, () => SelectedRoute is not null);
         LoadEditableSettings();
+        StartAutoRefresh();
         StartTrafficTimer();
     }
 
@@ -388,6 +390,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _trafficTimer.Interval = TimeSpan.FromSeconds(1);
         _trafficTimer.Tick += (_, _) => SampleTraffic();
         _trafficTimer.Start();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _refreshTimer.Interval = TimeSpan.FromSeconds(Math.Clamp(Settings.CheckIntervalSeconds, 1, 3600));
+        _refreshTimer.Tick += async (_, _) =>
+        {
+            if (!IsBusy)
+            {
+                await RunCheckAsync();
+            }
+        };
+        _refreshTimer.Start();
+        _ = RunCheckAsync();
     }
 
     private void SampleTraffic()

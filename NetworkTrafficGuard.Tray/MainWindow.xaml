@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Network Traffic Guard" Height="760" Width="1120"
-        MinHeight="660" MinWidth="960"
+        Title="Network Traffic Guard" Height="680" Width="1040"
+        MinHeight="600" MinWidth="920"
         Background="#F3F5F7">
     <Window.Resources>
         <Style x:Key="PanelBorder" TargetType="Border">
@@ -24,8 +24,8 @@
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style TargetType="Button">
-            <Setter Property="MinWidth" Value="92" />
-            <Setter Property="Height" Value="34" />
+            <Setter Property="MinWidth" Value="86" />
+            <Setter Property="Height" Value="32" />
             <Setter Property="Padding" Value="12,0" />
         </Style>
         <Style TargetType="TextBox">
@@ -36,12 +36,6 @@
 
     <DockPanel>
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="Status">
-                <MenuItem Header="{Binding StatusText}" IsEnabled="False" />
-                <MenuItem Header="{Binding StatusDetail}" IsEnabled="False" />
-                <Separator />
-                <MenuItem Header="更新" Command="{Binding RunCheckCommand}" />
-            </MenuItem>
             <MenuItem Header="設定">
                 <MenuItem StaysOpenOnClick="True">
                     <MenuItem.Header>
@@ -81,17 +75,15 @@
                     <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding ActiveLineText}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock Text="{Binding LastCheckedAt, StringFormat=更新: {0:yyyy-MM-dd HH:mm:ss}}"
-                               VerticalAlignment="Center" Style="{StaticResource MutedText}" Margin="0,0,14,0" />
-                    <Button Content="更新" Command="{Binding RunCheckCommand}" />
+                <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <TextBlock Text="自動更新" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding LastCheckedAt, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"
+                               Style="{StaticResource MutedText}" HorizontalAlignment="Right" />
                 </StackPanel>
             </DockPanel>
 
             <Grid Grid.Row="1" Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
@@ -132,15 +124,6 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-
-                <Border Grid.Column="4" Style="{StaticResource PanelBorder}">
-                    <StackPanel>
-                        <TextBlock Text="選項" Style="{StaticResource MutedText}" />
-                        <TextBlock Text="{Binding StatusText}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
-                        <TextBlock Text="{Binding OptionsSummary}" Margin="0,10,0,0" />
-                        <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
-                    </StackPanel>
-                </Border>
             </Grid>
 
             <Grid Grid.Row="2">
@@ -174,35 +157,24 @@
                                   GridLinesVisibility="Horizontal"
                                   RowHeaderWidth="0">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="" Binding="{Binding Role}" Width="58" />
-                                <DataGridTextColumn Header="Prefix" Binding="{Binding DestinationPrefix}" Width="112" />
-                                <DataGridTextColumn Header="Next hop" Binding="{Binding NextHop}" Width="220" />
+                                <DataGridTextColumn Header="優先" Binding="{Binding Role}" Width="76" />
+                                <DataGridTextColumn Header="網路" Binding="{Binding NetworkName}" Width="190" />
+                                <DataGridTextColumn Header="Gateway" Binding="{Binding Gateway}" Width="260" />
                                 <DataGridTextColumn Header="Interface" Binding="{Binding Interface}" Width="*" />
-                                <DataGridTextColumn Header="Route" Binding="{Binding RouteMetric}" Width="72" />
-                                <DataGridTextColumn Header="IF" Binding="{Binding InterfaceMetric}" Width="72" />
-                                <DataGridTextColumn Header="Total" Binding="{Binding TotalMetric}" Width="78" />
+                                <DataGridTextColumn Header="Type" Binding="{Binding AddressFamily}" Width="72" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
                 </Border>
 
-                <StackPanel Grid.Column="2">
-                    <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,14">
-                        <StackPanel>
-                            <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
-                            <TextBlock Text="{Binding TrafficRateText}" />
-                            <TextBlock Text="{Binding TrafficSparkline}" FontSize="28" FontFamily="Consolas" Margin="0,8,0,0" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource PanelBorder}">
-                        <StackPanel>
-                            <TextBlock Text="現在の経路" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
-                            <TextBlock Text="{Binding StatusDetail}" />
-                            <TextBlock Text="{Binding BestRouteText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <TextBlock Text="{Binding TrafficRateText}" />
+                        <TextBlock Text="{Binding TrafficSparkline}" FontSize="28" FontFamily="Consolas" Margin="0,8,0,0" />
+                        <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,18,0,0" />
+                    </StackPanel>
+                </Border>
             </Grid>
         </Grid>
     </DockPanel>
