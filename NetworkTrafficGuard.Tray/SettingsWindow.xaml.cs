@@ -56,10 +56,10 @@ public partial class SettingsWindow : Window, INotifyPropertyChanged
             {
                 _settings.PrimaryWifiDisplayName = displayName;
             }
-            else if (row.InterfaceIndex == _settings.SimInterfaceIndex
-                || string.Equals(row.InterfaceAlias, _settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+            else if (row.InterfaceIndex == _settings.SecondaryInterfaceIndex
+                || string.Equals(row.InterfaceAlias, _settings.SecondaryInterfaceAlias, StringComparison.OrdinalIgnoreCase))
             {
-                _settings.SimDisplayName = displayName;
+                _settings.SecondaryDisplayName = displayName;
             }
 
             if (!string.IsNullOrWhiteSpace(row.RawGateway))

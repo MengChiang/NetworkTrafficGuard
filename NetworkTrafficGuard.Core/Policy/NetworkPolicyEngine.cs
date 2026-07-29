@@ -22,17 +22,17 @@ public sealed class NetworkPolicyEngine : INetworkPolicyEngine
                 NetworkRiskLevel.Unknown,
                 PolicyMessageKeys.NoDefaultRoute,
                 shouldNotify: true,
-                shouldBlockSimRoute: false,
+                shouldBlockSecondaryRoute: false,
                 settings.CultureName);
         }
 
-        if (IsSimRoute(bestRoute, settings))
+        if (IsSecondaryRoute(bestRoute, settings))
         {
             return CreateResult(
-                NetworkRiskLevel.SimRouteActive,
-                PolicyMessageKeys.SimRouteActive,
+                NetworkRiskLevel.SecondaryRouteActive,
+                PolicyMessageKeys.SecondaryRouteActive,
                 shouldNotify: true,
-                shouldBlockSimRoute: settings.Mode == GuardMode.BlockSimWhenWifiDown,
+                shouldBlockSecondaryRoute: settings.Mode == GuardMode.BlockSecondaryWhenWifiDown,
                 settings.CultureName);
         }
 
@@ -40,21 +40,21 @@ public sealed class NetworkPolicyEngine : INetworkPolicyEngine
             NetworkRiskLevel.Normal,
             PolicyMessageKeys.NormalRoute,
             shouldNotify: false,
-            shouldBlockSimRoute: false,
+            shouldBlockSecondaryRoute: false,
             settings.CultureName);
     }
 
-    private static bool IsSimRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
+    private static bool IsSecondaryRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
     {
-        if (settings.SimInterfaceIndex is { } simInterfaceIndex
-            && route.InterfaceIndex == simInterfaceIndex)
+        if (settings.SecondaryInterfaceIndex is { } secondaryInterfaceIndex
+            && route.InterfaceIndex == secondaryInterfaceIndex)
         {
             return true;
         }
 
         return string.Equals(
             route.InterfaceAlias,
-            settings.SimInterfaceAlias,
+            settings.SecondaryInterfaceAlias,
             StringComparison.OrdinalIgnoreCase);
     }
 
@@ -62,13 +62,13 @@ public sealed class NetworkPolicyEngine : INetworkPolicyEngine
         NetworkRiskLevel riskLevel,
         string messageKey,
         bool shouldNotify,
-        bool shouldBlockSimRoute,
+        bool shouldBlockSecondaryRoute,
         string cultureName)
     {
         return new NetworkPolicyResult(
             riskLevel,
             LocalizedMessages.Get(messageKey, cultureName),
             shouldNotify,
-            shouldBlockSimRoute);
+            shouldBlockSecondaryRoute);
     }
 }

@@ -5,39 +5,39 @@
 目前電腦同時連接兩個網路：
 
 - Wi-Fi：主要上網來源，有時會帶出門使用。
-- 有線網路：連接家中的 SIM 路由器，流量有限，希望作為受控備援。
+- 有線網路：連接家中的 備援路由器，流量有限，希望作為受控備援。
 
-問題是當 Wi-Fi 中斷時，Windows 會自動改走有線 SIM 路由器，導致大量流量在未察覺的情況下被消耗。
+問題是當 Wi-Fi 中斷時，Windows 會自動改走有線 備援路由器，導致大量流量在未察覺的情況下被消耗。
 
 目標是開發一個 Windows 常駐程式，像手機的行動數據保護機制一樣：
 
 - 優先使用指定 Wi-Fi。
-- 偵測目前 Internet 流量是否正在走 SIM 路由器。
-- 在切換到 SIM 網路時警告。
-- 必要時自動阻止 SIM 網路承接 Internet 流量。
+- 偵測目前 Internet 流量是否正在走 備援路由器。
+- 在切換到 備援網路 網路時警告。
+- 必要時自動阻止 備援網路 網路承接 Internet 流量。
 
 ## 2. 核心目標
 
 ### 必要目標
 
 1. 偵測目前 Windows 的主要 Internet default route。
-2. 判斷目前是否正在使用 SIM 有線網路上網。
-3. 當 Wi-Fi 中斷且流量改走 SIM 有線網路時，立即通知使用者。
+2. 判斷目前是否正在使用 備援網路上網。
+3. 當 Wi-Fi 中斷且流量改走 備援網路時，立即通知使用者。
 4. 提供設定讓使用者選擇：
    - 只警告。
-   - 自動封鎖 SIM Internet。
-   - 詢問後允許 SIM 臨時接管。
+   - 自動封鎖 secondary network Internet。
+   - 詢問後允許 備援網路 臨時接管。
 5. 程式需可開機自動啟動。
 
 ### 延伸目標
 
-1. 監控 SIM 網路本月使用量。
+1. 監控 備援網路 網路本月使用量。
 2. 設定流量警戒值，例如 1GB、5GB、10GB。
-3. 提供「允許 SIM 使用 10 分鐘 / 30 分鐘 / 直到下次重開機」。
+3. 提供「允許 備援網路 使用 10 分鐘 / 30 分鐘 / 直到下次重開機」。
 4. 顯示 tray icon 狀態：
    - 綠色：Wi-Fi 正常。
-   - 黃色：Wi-Fi 中斷，但 SIM 尚未接管。
-   - 紅色：目前正在使用 SIM 上網。
+   - 黃色：Wi-Fi 中斷，但 備援網路 尚未接管。
+   - 紅色：目前正在使用 備援網路 上網。
 5. 允許指定安全 Wi-Fi SSID 清單。
 6. 匯出診斷報告，方便確認 Windows routing 狀態。
 
@@ -46,12 +46,12 @@
 第一版先不要做太大，建議只做以下功能：
 
 1. 設定主要 Wi-Fi 介面。
-2. 設定 SIM 有線網路介面。
+2. 設定 備援網路介面。
 3. 每 2 至 5 秒檢查目前 default route。
-4. 若 default route 指向 SIM 有線網路：
+4. 若 default route 指向 備援網路：
    - 顯示 Windows toast notification。
    - tray icon 變成紅色。
-   - 若啟用「自動封鎖」，則移除或降低 SIM default route。
+   - 若啟用「自動封鎖」，則移除或降低 secondary network default route。
 5. 提供簡單設定檔 `appsettings.json`。
 6. 寫入文字 log。
 
@@ -61,9 +61,9 @@
 
 Windows 會依照 route metric 與 interface metric 選擇出口網路。
 
-當 Wi-Fi 和有線 SIM 都可連 Internet 時，可以讓 Wi-Fi metric 較低、SIM metric 較高。這會讓 Windows 優先使用 Wi-Fi。
+當 Wi-Fi 和有線 備援網路 都可連 Internet 時，可以讓 Wi-Fi metric 較低、備援網路 metric 較高。這會讓 Windows 優先使用 Wi-Fi。
 
-但這不會防止 Wi-Fi 斷線後 SIM 自動接手，因為 Windows 仍然會找到另一條可用 default route。
+但這不會防止 Wi-Fi 斷線後 備援網路 自動接手，因為 Windows 仍然會找到另一條可用 default route。
 
 ### 4.2 Default Route
 
@@ -73,7 +73,7 @@ Windows 會依照 route metric 與 interface metric 選擇出口網路。
 Get-NetRoute -DestinationPrefix "0.0.0.0/0"
 ```
 
-若目前最佳 default route 的 `InterfaceAlias` 或 `InterfaceIndex` 是 SIM 有線網卡，就代表 Internet 流量可能正在走 SIM。
+若目前最佳 default route 的 `InterfaceAlias` 或 `InterfaceIndex` 是 備援網路 有線網卡，就代表 Internet 流量可能正在走 備援網路。
 
 ### 4.3 封鎖策略
 
@@ -82,10 +82,10 @@ Get-NetRoute -DestinationPrefix "0.0.0.0/0"
 | 策略 | 說明 | 優點 | 缺點 |
 | --- | --- | --- | --- |
 | 警告 | 只通知使用者 | 最安全，不改系統設定 | 仍可能吃流量 |
-| 移除 SIM default route | 保留 LAN，但不讓 SIM 當 Internet 出口 | 最符合需求 | 需要系統管理員權限 |
-| 停用 SIM 網卡 | 直接停用網路介面 | 很有效 | 可能影響連線到 SIM 路由器管理頁 |
+| 移除 secondary network default route | 保留 LAN，但不讓 備援網路 當 Internet 出口 | 最符合需求 | 需要系統管理員權限 |
+| 停用 備援網路介面 | 直接停用網路介面 | 很有效 | 可能影響連線到 備援路由器管理頁 |
 
-建議 MVP 使用「偵測 + 警告 + 可選移除 SIM default route」。
+建議 MVP 使用「偵測 + 警告 + 可選移除 secondary network default route」。
 
 ## 5. 建議技術架構
 
@@ -200,7 +200,7 @@ public enum NetworkRiskLevel
 {
     Normal,
     WifiUnavailable,
-    SimRouteActive,
+    SecondaryRouteActive,
     Unknown
 }
 
@@ -208,7 +208,7 @@ public sealed record NetworkPolicyResult(
     NetworkRiskLevel RiskLevel,
     string Message,
     bool ShouldNotify,
-    bool ShouldBlockSimRoute);
+    bool ShouldBlockSecondaryRoute);
 ```
 
 ### 7.2 設定檔
@@ -216,7 +216,7 @@ public sealed record NetworkPolicyResult(
 ```json
 {
   "PrimaryWifiInterfaceAlias": "Wi-Fi",
-  "SimInterfaceAlias": "Ethernet",
+  "SecondaryInterfaceAlias": "Ethernet",
   "Mode": "WarnOnly",
   "CheckIntervalSeconds": 3,
   "AllowedWifiSsids": [
@@ -229,8 +229,8 @@ public sealed record NetworkPolicyResult(
 `Mode` 建議先支援：
 
 - `WarnOnly`
-- `BlockSimWhenWifiDown`
-- `AskBeforeUsingSim`
+- `BlockSecondaryWhenWifiDown`
+- `AskBeforeUsingSecondary`
 
 ### 7.3 Policy Engine
 
@@ -242,7 +242,7 @@ public sealed class NetworkPolicyEngine
     public NetworkPolicyResult Evaluate(
         IReadOnlyList<DefaultRouteInfo> defaultRoutes,
         string primaryWifiAlias,
-        string simAlias,
+        string secondaryAlias,
         GuardMode mode)
     {
         var bestRoute = defaultRoutes
@@ -255,23 +255,23 @@ public sealed class NetworkPolicyEngine
                 NetworkRiskLevel.Unknown,
                 "找不到 default route。",
                 ShouldNotify: true,
-                ShouldBlockSimRoute: false);
+                ShouldBlockSecondaryRoute: false);
         }
 
-        if (string.Equals(bestRoute.InterfaceAlias, simAlias, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(bestRoute.InterfaceAlias, secondaryAlias, StringComparison.OrdinalIgnoreCase))
         {
             return new NetworkPolicyResult(
-                NetworkRiskLevel.SimRouteActive,
-                "目前 Internet default route 指向 SIM 有線網路。",
+                NetworkRiskLevel.SecondaryRouteActive,
+                "目前 Internet default route 指向 備援網路。",
                 ShouldNotify: true,
-                ShouldBlockSimRoute: mode == GuardMode.BlockSimWhenWifiDown);
+                ShouldBlockSecondaryRoute: mode == GuardMode.BlockSecondaryWhenWifiDown);
         }
 
         return new NetworkPolicyResult(
             NetworkRiskLevel.Normal,
-            "目前未使用 SIM 有線網路作為主要 Internet 出口。",
+            "目前未使用 備援網路作為主要 Internet 出口。",
             ShouldNotify: false,
-            ShouldBlockSimRoute: false);
+            ShouldBlockSecondaryRoute: false);
     }
 }
 ```
@@ -306,9 +306,9 @@ Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
 
 建議先不要太早碰 P/Invoke。先把產品行為做對，再優化資料來源。
 
-## 9. 封鎖 SIM Internet 的實作方式
+## 9. 封鎖 secondary network Internet 的實作方式
 
-### 9.1 移除 SIM default route
+### 9.1 移除 secondary network default route
 
 ```powershell
 Get-NetRoute -DestinationPrefix "0.0.0.0/0" -InterfaceAlias "Ethernet" |
@@ -317,15 +317,15 @@ Get-NetRoute -DestinationPrefix "0.0.0.0/0" -InterfaceAlias "Ethernet" |
 
 這通常需要系統管理員權限。
 
-### 9.2 提高 SIM interface metric
+### 9.2 提高 secondary network interface metric
 
 ```powershell
 Set-NetIPInterface -InterfaceAlias "Ethernet" -InterfaceMetric 9000
 ```
 
-這只能降低優先權，無法防止 Wi-Fi 斷線後 SIM 接管。
+這只能降低優先權，無法防止 Wi-Fi 斷線後 備援網路 接管。
 
-### 9.3 停用 SIM 網卡
+### 9.3 停用 備援網路介面
 
 ```powershell
 Disable-NetAdapter -Name "Ethernet" -Confirm:$false
@@ -340,15 +340,15 @@ Disable-NetAdapter -Name "Ethernet" -Confirm:$false
 先測 `NetworkPolicyEngine`：
 
 - Wi-Fi 是 best route 時，狀態為 `Normal`。
-- SIM 是 best route 且模式為 `WarnOnly` 時，只警告不封鎖。
-- SIM 是 best route 且模式為 `BlockSimWhenWifiDown` 時，應要求封鎖。
+- 備援網路 是 best route 且模式為 `WarnOnly` 時，只警告不封鎖。
+- 備援網路 是 best route 且模式為 `BlockSecondaryWhenWifiDown` 時，應要求封鎖。
 - 沒有 default route 時，狀態為 `Unknown`。
 
 範例：
 
 ```csharp
 [Fact]
-public void Evaluate_WhenSimRouteIsBestAndModeIsBlock_ShouldRequestBlock()
+public void Evaluate_WhenSecondaryRouteIsBestAndModeIsBlock_ShouldRequestBlock()
 {
     var engine = new NetworkPolicyEngine();
     var routes = new[]
@@ -359,12 +359,12 @@ public void Evaluate_WhenSimRouteIsBestAndModeIsBlock_ShouldRequestBlock()
     var result = engine.Evaluate(
         routes,
         primaryWifiAlias: "Wi-Fi",
-        simAlias: "Ethernet",
-        mode: GuardMode.BlockSimWhenWifiDown);
+        secondaryAlias: "Ethernet",
+        mode: GuardMode.BlockSecondaryWhenWifiDown);
 
-    result.RiskLevel.Should().Be(NetworkRiskLevel.SimRouteActive);
+    result.RiskLevel.Should().Be(NetworkRiskLevel.SecondaryRouteActive);
     result.ShouldNotify.Should().BeTrue();
-    result.ShouldBlockSimRoute.Should().BeTrue();
+    result.ShouldBlockSecondaryRoute.Should().BeTrue();
 }
 ```
 
@@ -392,12 +392,12 @@ public interface IRouteController
 
 測試場景：
 
-1. Wi-Fi 與 SIM 有線網路都連上。
+1. Wi-Fi 與 備援網路都連上。
 2. 確認 default route 優先走 Wi-Fi。
 3. 關閉 Wi-Fi。
-4. 檢查程式是否偵測到 SIM route active。
+4. 檢查程式是否偵測到 secondary network route active。
 5. 啟用自動封鎖。
-6. 再次關閉 Wi-Fi，確認 SIM default route 被移除或警告彈出。
+6. 再次關閉 Wi-Fi，確認 secondary network default route 被移除或警告彈出。
 
 建議測試前先保存目前 route：
 
@@ -416,12 +416,12 @@ Get-NetIPInterface | Sort-Object InterfaceMetric | Format-Table InterfaceAlias,I
 
 - 列出 default routes。
 - 找出目前 best route。
-- 顯示是否正在使用 SIM。
+- 顯示是否正在使用 備援網路。
 - 支援 `--watch` 每幾秒檢查一次。
 
 完成條件：
 
-- 能正確在 Wi-Fi / SIM 切換時輸出狀態。
+- 能正確在 Wi-Fi / 備援網路 切換時輸出狀態。
 
 ### Milestone 2：Policy + Tests
 
@@ -442,17 +442,17 @@ Get-NetIPInterface | Sort-Object InterfaceMetric | Format-Table InterfaceAlias,I
 - 右鍵選單：
   - 開啟設定。
   - 暫停監控。
-  - 允許 SIM 30 分鐘。
+  - 允許 備援網路 30 分鐘。
   - 離開。
-- 偵測到 SIM 接管時跳通知。
+- 偵測到 備援網路 接管時跳通知。
 
 ### Milestone 4：Admin Action
 
-目標：加入封鎖 SIM Internet。
+目標：加入封鎖 secondary network Internet。
 
 功能：
 
-- 手動按鈕移除 SIM default route。
+- 手動按鈕移除 secondary network default route。
 - 自動封鎖模式。
 - 權限不足時提示以系統管理員執行。
 
@@ -477,13 +477,13 @@ Get-NetIPInterface | Sort-Object InterfaceMetric | Format-Table InterfaceAlias,I
   ↓
 找出 best route
   ↓
-判斷 best route 是否為 SIM interface
+判斷 best route 是否為 secondary network interface
   ↓
 若否：tray icon 顯示正常
   ↓
 若是：跳通知
   ↓
-若模式為自動封鎖：移除 SIM default route
+若模式為自動封鎖：移除 secondary network default route
 ```
 
 ## 13. 風險與注意事項
@@ -491,7 +491,7 @@ Get-NetIPInterface | Sort-Object InterfaceMetric | Format-Table InterfaceAlias,I
 1. 不同 Windows 語系的網卡名稱可能不同，不要硬寫 `Wi-Fi` 或 `Ethernet`。
 2. 使用者可能改名網卡，所以設定應保存 `InterfaceIndex` 和 `InterfaceAlias`，並允許重新選擇。
 3. route 操作需要系統管理員權限。
-4. 如果 SIM 路由器也承擔區網用途，停用網卡可能太激進。
+4. 如果 備援路由器也承擔區網用途，停用網卡可能太激進。
 5. Windows 更新或 VPN 軟體可能改變 route table，應避免做過度假設。
 6. VPN 也可能成為 default route，policy 需要清楚定義 VPN 時的行為。
 7. 若使用 IPv6，還要監控 `::/0` default route。
@@ -504,7 +504,7 @@ Get-NetIPInterface | Sort-Object InterfaceMetric | Format-Table InterfaceAlias,I
 2. 新增 `NetworkTrafficGuard.Core` 和 `NetworkTrafficGuard.Cli`。
 3. 用 PowerShell JSON 讀取 default route。
 4. 把 route 判斷邏輯寫成可測試的 `NetworkPolicyEngine`。
-5. 確認能偵測到 Wi-Fi 斷線後 SIM 接管。
+5. 確認能偵測到 Wi-Fi 斷線後 備援網路 接管。
 6. 再加入 tray app。
 
 這樣可以避免一開始就卡在 WPF tray、Windows Service、權限提升和安裝程式。先把「判斷正不正確」做出來，後面 UI 與 service 都只是包裝。

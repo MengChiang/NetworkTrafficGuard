@@ -20,11 +20,11 @@ public sealed class RouteDiagnosticsLogger(ILogger<RouteDiagnosticsLogger> logge
     private void LogSettings(NetworkGuardSettings settings)
     {
         logger.LogInformation(
-            "Settings: PrimaryWiFi={PrimaryWifiAlias}#{PrimaryWifiIndex}, SIM={SimAlias}#{SimIndex}, Mode={Mode}, EnableRouteChanges={EnableRouteChanges}, Culture={CultureName}, Interval={CheckIntervalSeconds}s",
+            "Settings: PrimaryWiFi={PrimaryWifiAlias}#{PrimaryWifiIndex}, SecondaryNetwork={SecondaryAlias}#{SecondaryIndex}, Mode={Mode}, EnableRouteChanges={EnableRouteChanges}, Culture={CultureName}, Interval={CheckIntervalSeconds}s",
             settings.PrimaryWifiInterfaceAlias,
             settings.PrimaryWifiInterfaceIndex?.ToString() ?? "auto",
-            settings.SimInterfaceAlias,
-            settings.SimInterfaceIndex?.ToString() ?? "auto",
+            settings.SecondaryInterfaceAlias,
+            settings.SecondaryInterfaceIndex?.ToString() ?? "auto",
             settings.Mode,
             settings.EnableRouteChanges,
             settings.CultureName,
@@ -79,10 +79,10 @@ public sealed class RouteDiagnosticsLogger(ILogger<RouteDiagnosticsLogger> logge
     private void LogPolicyResult(NetworkPolicyResult policyResult)
     {
         logger.LogInformation(
-            "Policy result: {RiskLevel}. {Message} Notify={ShouldNotify}, BlockSim={ShouldBlockSimRoute}",
+            "Policy result: {RiskLevel}. {Message} Notify={ShouldNotify}, BlockSecondary={ShouldBlockSecondaryRoute}",
             policyResult.RiskLevel,
             policyResult.Message,
             policyResult.ShouldNotify,
-            policyResult.ShouldBlockSimRoute);
+            policyResult.ShouldBlockSecondaryRoute);
     }
 }

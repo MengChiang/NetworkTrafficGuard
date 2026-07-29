@@ -91,10 +91,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _editableWifiDisplayName = string.Empty;
 
     [ObservableProperty]
-    private string _editableSimDisplayName = string.Empty;
+    private string _editableSecondaryDisplayName = string.Empty;
 
     [ObservableProperty]
-    private string _editableSimCarrierName = string.Empty;
+    private string _editableSecondaryProviderName = string.Empty;
 
     [ObservableProperty]
     private string _editableGatewayAddress = "192.168.100.1";
@@ -103,10 +103,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _editableGatewayDisplayName = string.Empty;
 
     [ObservableProperty]
-    private string _selectedNetworkTitle = "選取左側網路";
+    private string _selectedNetworkTitle = UiTextProvider.Get(null).SelectNetworkPromptTitle;
 
     [ObservableProperty]
-    private string _selectedNetworkDetail = "選取一列後，可查看它的流量並編輯顯示名稱。";
+    private string _selectedNetworkDetail = UiTextProvider.Get(null).SelectNetworkPromptDetail;
 
     [ObservableProperty]
     private string _editableSelectedNetworkName = string.Empty;
@@ -192,7 +192,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string SettingsSummary =>
         $"Wi-Fi {Settings.PrimaryWifiDisplayName} ({Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}) | " +
-        $"回線 {Settings.SimDisplayName} / {Settings.SimCarrierName} ({Settings.SimInterfaceAlias} #{FormatIndex(Settings.SimInterfaceIndex)}) | " +
+        $"Secondary {Settings.SecondaryDisplayName} / {Settings.SecondaryProviderName} ({Settings.SecondaryInterfaceAlias} #{FormatIndex(Settings.SecondaryInterfaceIndex)}) | " +
         $"Mode {Settings.Mode} | Route changes {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter changes {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
 
     public string WifiDisplayName => _wifiDisplayNameText;
@@ -207,7 +207,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string SecondaryConnectionDisplayName => _secondaryConnectionDisplayNameText;
 
-    public string SecondaryConnectionCarrierName => Settings.SimCarrierName;
+    public string SecondaryConnectionCarrierName => Settings.SecondaryProviderName;
 
     public string OptionsSummary =>
         $"Wi-Fi | Route {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
@@ -295,11 +295,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             SyncAlertTrafficMonitors();
 
             StatusText = policyResult.RiskLevel.ToString();
-            StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSim={policyResult.ShouldBlockSimRoute}";
+            StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSecondary={policyResult.ShouldBlockSecondaryRoute}";
 
-            if (policyResult.ShouldBlockSimRoute)
+            if (policyResult.ShouldBlockSecondaryRoute)
             {
-                var routeControlResult = await _routeController.RemoveSimDefaultRoutesAsync(
+                var routeControlResult = await _routeController.RemoveSecondaryDefaultRoutesAsync(
                     defaultRoutes,
                     CreateDryRunSettings(Settings),
                     CancellationToken.None);
@@ -328,11 +328,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             PrimaryWifiInterfaceAlias = source.PrimaryWifiInterfaceAlias,
             PrimaryWifiInterfaceIndex = source.PrimaryWifiInterfaceIndex,
-            SimInterfaceAlias = source.SimInterfaceAlias,
-            SimInterfaceIndex = source.SimInterfaceIndex,
+            SecondaryInterfaceAlias = source.SecondaryInterfaceAlias,
+            SecondaryInterfaceIndex = source.SecondaryInterfaceIndex,
             PrimaryWifiDisplayName = source.PrimaryWifiDisplayName,
-            SimDisplayName = source.SimDisplayName,
-            SimCarrierName = source.SimCarrierName,
+            SecondaryDisplayName = source.SecondaryDisplayName,
+            SecondaryProviderName = source.SecondaryProviderName,
             GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
             RoutePriorities = new Dictionary<string, int>(source.RoutePriorities, StringComparer.OrdinalIgnoreCase),
             MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
@@ -598,11 +598,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             PrimaryWifiInterfaceAlias = source.PrimaryWifiInterfaceAlias,
             PrimaryWifiInterfaceIndex = source.PrimaryWifiInterfaceIndex,
-            SimInterfaceAlias = source.SimInterfaceAlias,
-            SimInterfaceIndex = source.SimInterfaceIndex,
+            SecondaryInterfaceAlias = source.SecondaryInterfaceAlias,
+            SecondaryInterfaceIndex = source.SecondaryInterfaceIndex,
             PrimaryWifiDisplayName = source.PrimaryWifiDisplayName,
-            SimDisplayName = source.SimDisplayName,
-            SimCarrierName = source.SimCarrierName,
+            SecondaryDisplayName = source.SecondaryDisplayName,
+            SecondaryProviderName = source.SecondaryProviderName,
             GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
             RoutePriorities = new Dictionary<string, int>(source.RoutePriorities, StringComparer.OrdinalIgnoreCase),
             MonitoredRouteKeys = [.. source.MonitoredRouteKeys],
@@ -792,12 +792,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void LoadEditableSettings()
     {
         EditableWifiDisplayName = Settings.PrimaryWifiDisplayName;
-        EditableSimDisplayName = Settings.SimDisplayName;
-        EditableSimCarrierName = Settings.SimCarrierName;
+        EditableSecondaryDisplayName = Settings.SecondaryDisplayName;
+        EditableSecondaryProviderName = Settings.SecondaryProviderName;
         EditableGatewayAddress = Settings.GatewayDisplayNames.Keys.FirstOrDefault() ?? "192.168.100.1";
         EditableGatewayDisplayName = Settings.GatewayDisplayNames.TryGetValue(EditableGatewayAddress, out var displayName)
             ? displayName
-            : Settings.SimDisplayName;
+            : Settings.SecondaryDisplayName;
     }
 
     private void OpenSettingsWindow()
@@ -848,8 +848,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void SaveSettings()
     {
         Settings.PrimaryWifiDisplayName = EditableWifiDisplayName.Trim();
-        Settings.SimDisplayName = EditableSimDisplayName.Trim();
-        Settings.SimCarrierName = EditableSimCarrierName.Trim();
+        Settings.SecondaryDisplayName = EditableSecondaryDisplayName.Trim();
+        Settings.SecondaryProviderName = EditableSecondaryProviderName.Trim();
 
         if (!string.IsNullOrWhiteSpace(EditableGatewayAddress)
             && !string.IsNullOrWhiteSpace(EditableGatewayDisplayName))
@@ -877,11 +877,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Settings.PrimaryWifiDisplayName = displayName;
             EditableWifiDisplayName = displayName;
         }
-        else if (SelectedRoute.InterfaceIndex == Settings.SimInterfaceIndex
-            || string.Equals(SelectedRoute.InterfaceAlias, Settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+        else if (SelectedRoute.InterfaceIndex == Settings.SecondaryInterfaceIndex
+            || string.Equals(SelectedRoute.InterfaceAlias, Settings.SecondaryInterfaceAlias, StringComparison.OrdinalIgnoreCase))
         {
-            Settings.SimDisplayName = displayName;
-            EditableSimDisplayName = displayName;
+            Settings.SecondaryDisplayName = displayName;
+            EditableSecondaryDisplayName = displayName;
         }
 
         if (!string.IsNullOrWhiteSpace(SelectedRoute.RawGateway))
@@ -907,6 +907,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SecondaryConnectionLabel));
         OnPropertyChanged(nameof(EnableWifiMenuText));
         OnPropertyChanged(nameof(DisableWifiMenuText));
+
+        if (SelectedRoute is null)
+        {
+            SelectedNetworkTitle = Texts.SelectNetworkPromptTitle;
+            SelectedNetworkDetail = Texts.SelectNetworkPromptDetail;
+        }
     }
 
     private void UpdateSelectedRouteDetails(RouteRowViewModel? route)
@@ -914,8 +920,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (route is null)
         {
             _selectedRouteKey = null;
-            SelectedNetworkTitle = "選取左側網路";
-            SelectedNetworkDetail = "選取一列後，可查看它的流量並編輯顯示名稱。";
+            SelectedNetworkTitle = Texts.SelectNetworkPromptTitle;
+            SelectedNetworkDetail = Texts.SelectNetworkPromptDetail;
             EditableSelectedNetworkName = string.Empty;
             return;
         }
@@ -1069,7 +1075,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (networkInterface is null)
         {
-            monitor.RateText = "找不到網卡";
+            monitor.RateText = "Network adapter not found";
             return null;
         }
 

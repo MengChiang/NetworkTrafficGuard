@@ -36,6 +36,10 @@ public sealed record UiText
 
     public required string RealtimeTraffic { get; init; }
 
+    public required string SelectNetworkPromptTitle { get; init; }
+
+    public required string SelectNetworkPromptDetail { get; init; }
+
     public required string SettingsTitle { get; init; }
 
     public required string SettingsDescription { get; init; }

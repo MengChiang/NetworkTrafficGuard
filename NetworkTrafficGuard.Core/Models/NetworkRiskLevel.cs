@@ -4,6 +4,6 @@ public enum NetworkRiskLevel
 {
     Normal,
     WifiUnavailable,
-    SimRouteActive,
+    SecondaryRouteActive,
     Unknown
 }

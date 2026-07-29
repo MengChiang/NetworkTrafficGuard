@@ -54,12 +54,12 @@ public sealed partial class RouteRowViewModel(
             return settings.PrimaryWifiDisplayName;
         }
 
-        if (settings.SimInterfaceIndex == route.InterfaceIndex
-            || string.Equals(route.InterfaceAlias, settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+        if (settings.SecondaryInterfaceIndex == route.InterfaceIndex
+            || string.Equals(route.InterfaceAlias, settings.SecondaryInterfaceAlias, StringComparison.OrdinalIgnoreCase))
         {
-            return string.IsNullOrWhiteSpace(settings.SimCarrierName)
-                ? settings.SimDisplayName
-                : $"{settings.SimDisplayName} / {settings.SimCarrierName}";
+            return string.IsNullOrWhiteSpace(settings.SecondaryProviderName)
+                ? settings.SecondaryDisplayName
+                : $"{settings.SecondaryDisplayName} / {settings.SecondaryProviderName}";
         }
 
         return route.InterfaceAlias;

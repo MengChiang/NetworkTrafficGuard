@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -16,9 +16,9 @@
     <value>No default route was found.</value>
   </data>
   <data name="NormalRoute" xml:space="preserve">
-    <value>The SIM wired network is not the primary Internet route.</value>
+    <value>The secondary network is not the primary Internet route.</value>
   </data>
-  <data name="SimRouteActive" xml:space="preserve">
-    <value>The current Internet default route points to the SIM wired network.</value>
+  <data name="SecondaryRouteActive" xml:space="preserve">
+    <value>The current Internet default route points to the secondary network.</value>
   </data>
 </root>

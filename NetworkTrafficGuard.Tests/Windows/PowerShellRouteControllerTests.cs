@@ -9,7 +9,7 @@ namespace NetworkTrafficGuard.Tests.Windows;
 public sealed class PowerShellRouteControllerTests
 {
     [Fact]
-    public async Task RemoveSimDefaultRoutesAsync_WhenRouteChangesAreDisabled_ShouldReturnDryRunResult()
+    public async Task RemoveSecondaryDefaultRoutesAsync_WhenRouteChangesAreDisabled_ShouldReturnDryRunResult()
     {
         var controller = new PowerShellRouteController(NullLogger<PowerShellRouteController>.Instance);
         var routes = new[]
@@ -25,12 +25,12 @@ public sealed class PowerShellRouteControllerTests
 
         var settings = new NetworkGuardSettings
         {
-            SimInterfaceAlias = "Ethernet",
-            SimInterfaceIndex = 12,
+            SecondaryInterfaceAlias = "Ethernet",
+            SecondaryInterfaceIndex = 12,
             EnableRouteChanges = false
         };
 
-        var result = await controller.RemoveSimDefaultRoutesAsync(
+        var result = await controller.RemoveSecondaryDefaultRoutesAsync(
             routes,
             settings,
             CancellationToken.None);
@@ -42,7 +42,7 @@ public sealed class PowerShellRouteControllerTests
     }
 
     [Fact]
-    public async Task RemoveSimDefaultRoutesAsync_WhenNoSimDefaultRoutesMatch_ShouldNotChangeRoutes()
+    public async Task RemoveSecondaryDefaultRoutesAsync_WhenNoSecondaryDefaultRoutesMatch_ShouldNotChangeRoutes()
     {
         var controller = new PowerShellRouteController(NullLogger<PowerShellRouteController>.Instance);
         var routes = new[]
@@ -58,12 +58,12 @@ public sealed class PowerShellRouteControllerTests
 
         var settings = new NetworkGuardSettings
         {
-            SimInterfaceAlias = "Ethernet",
-            SimInterfaceIndex = 12,
+            SecondaryInterfaceAlias = "Ethernet",
+            SecondaryInterfaceIndex = 12,
             EnableRouteChanges = false
         };
 
-        var result = await controller.RemoveSimDefaultRoutesAsync(
+        var result = await controller.RemoveSecondaryDefaultRoutesAsync(
             routes,
             settings,
             CancellationToken.None);

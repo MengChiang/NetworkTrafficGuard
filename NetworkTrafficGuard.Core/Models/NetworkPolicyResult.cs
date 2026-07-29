@@ -4,4 +4,4 @@ public sealed record NetworkPolicyResult(
     NetworkRiskLevel RiskLevel,
     string Message,
     bool ShouldNotify,
-    bool ShouldBlockSimRoute);
+    bool ShouldBlockSecondaryRoute);

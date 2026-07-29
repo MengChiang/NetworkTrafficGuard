@@ -29,9 +29,9 @@ public sealed class Worker(
 
                 routeDiagnosticsLogger.LogSnapshot(routes, settings, result);
 
-                if (result.ShouldBlockSimRoute)
+                if (result.ShouldBlockSecondaryRoute)
                 {
-                    var routeControlResult = await routeController.RemoveSimDefaultRoutesAsync(
+                    var routeControlResult = await routeController.RemoveSecondaryDefaultRoutesAsync(
                         routes,
                         settings,
                         stoppingToken);

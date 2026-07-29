@@ -13,13 +13,13 @@ public sealed class NetworkGuardSettings
 
     public string PrimaryWifiDisplayName { get; set; } = "Wi-Fi";
 
-    public string SimInterfaceAlias { get; set; } = "Ethernet";
+    public string SecondaryInterfaceAlias { get; set; } = "Ethernet";
 
-    public int? SimInterfaceIndex { get; set; }
+    public int? SecondaryInterfaceIndex { get; set; }
 
-    public string SimDisplayName { get; set; } = "Mobile Data";
+    public string SecondaryDisplayName { get; set; } = "Secondary Network";
 
-    public string SimCarrierName { get; set; } = string.Empty;
+    public string SecondaryProviderName { get; set; } = string.Empty;
 
     public Dictionary<string, string> GatewayDisplayNames { get; set; } = [];
 

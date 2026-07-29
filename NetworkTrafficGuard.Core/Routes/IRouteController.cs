@@ -5,7 +5,7 @@ namespace NetworkTrafficGuard.Core.Routes;
 
 public interface IRouteController
 {
-    Task<RouteControlResult> RemoveSimDefaultRoutesAsync(
+    Task<RouteControlResult> RemoveSecondaryDefaultRoutesAsync(
         IReadOnlyCollection<DefaultRouteInfo> defaultRoutes,
         NetworkGuardSettings settings,
         CancellationToken cancellationToken);

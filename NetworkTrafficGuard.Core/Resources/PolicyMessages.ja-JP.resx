@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -13,12 +13,12 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="NoDefaultRoute" xml:space="preserve">
-    <value>default route が見つかりません。</value>
+    <value>No default route was found.</value>
   </data>
   <data name="NormalRoute" xml:space="preserve">
-    <value>現在、SIM 有線ネットワークは主要な Internet 経路ではありません。</value>
+    <value>The secondary network is not the primary Internet route.</value>
   </data>
-  <data name="SimRouteActive" xml:space="preserve">
-    <value>現在の Internet default route は SIM 有線ネットワークを指しています。</value>
+  <data name="SecondaryRouteActive" xml:space="preserve">
+    <value>The current Internet default route points to the secondary network.</value>
   </data>
 </root>

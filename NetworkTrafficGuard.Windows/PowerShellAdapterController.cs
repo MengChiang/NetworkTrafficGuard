@@ -34,7 +34,7 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
                 Status: "Unknown",
                 InterfaceIndex: null,
                 Message: string.IsNullOrWhiteSpace(error)
-                    ? $"找不到網卡 '{interfaceAlias}'。"
+                    ? $"Network adapter '{interfaceAlias}' was not found."
                     : error);
         }
 
@@ -51,7 +51,7 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
             Name: name,
             Status: status,
             InterfaceIndex: interfaceIndex,
-            Message: $"網卡 {name}: {status}");
+            Message: $"Network adapter {name}: {status}");
     }
 
     public async Task<AdapterControlResult> SetAdapterEnabledAsync(
@@ -64,7 +64,7 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
         ArgumentNullException.ThrowIfNull(settings);
 
         var action = enabled ? "enable" : "disable";
-        var actionText = enabled ? "開啟" : "關閉";
+        var actionPastTense = enabled ? "enabled" : "disabled";
 
         if (!settings.EnableAdapterChanges)
         {
@@ -76,7 +76,7 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
             return new AdapterControlResult(
                 IsDryRun: true,
                 Changed: false,
-                Message: $"Dry-run：只會預演，不會真的{actionText}網卡 '{interfaceAlias}'。");
+                Message: $"Dry-run only. Network adapter '{interfaceAlias}' was not actually {actionPastTense}.");
         }
 
         using var process = CreatePowerShellProcess(interfaceAlias, enabled);
@@ -90,7 +90,7 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
             return new AdapterControlResult(
                 IsDryRun: false,
                 Changed: false,
-                Message: $"{actionText}網卡 '{interfaceAlias}' 的系統管理員權限確認已取消。");
+                Message: $"Administrator permission confirmation was canceled while trying to {action} network adapter '{interfaceAlias}'.");
         }
 
         await WaitForExitWithTimeoutAsync(process, TimeSpan.FromSeconds(20), cancellationToken);
@@ -106,7 +106,7 @@ public sealed class PowerShellAdapterController(ILogger<PowerShellAdapterControl
         return new AdapterControlResult(
             IsDryRun: false,
             Changed: true,
-            Message: $"{actionText}網卡 '{interfaceAlias}' 指令已完成，目前狀態：{status.Status}。");
+            Message: $"Network adapter '{interfaceAlias}' {action} command completed. Current status: {status.Status}.");
     }
 
     private static Process CreateAdapterStatusProcess(string interfaceAlias)

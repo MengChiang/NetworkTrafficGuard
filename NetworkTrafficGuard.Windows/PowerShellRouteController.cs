@@ -10,7 +10,7 @@ namespace NetworkTrafficGuard.Windows;
 
 public sealed class PowerShellRouteController(ILogger<PowerShellRouteController> logger) : IRouteController
 {
-    public async Task<RouteControlResult> RemoveSimDefaultRoutesAsync(
+    public async Task<RouteControlResult> RemoveSecondaryDefaultRoutesAsync(
         IReadOnlyCollection<DefaultRouteInfo> defaultRoutes,
         NetworkGuardSettings settings,
         CancellationToken cancellationToken)
@@ -20,7 +20,7 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
 
         var matchedRoutes = defaultRoutes
             .Where(route => DefaultRouteSelector.IsDefaultRoute(route.DestinationPrefix))
-            .Where(route => IsSimRoute(route, settings))
+            .Where(route => IsSecondaryRoute(route, settings))
             .OrderBy(route => route.TotalMetric)
             .ToList();
 
@@ -31,13 +31,13 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
                 MatchedRouteCount: 0,
                 ChangedRouteCount: 0,
                 MatchedRoutes: matchedRoutes,
-                Message: "No SIM default routes matched.");
+                Message: "No secondary default routes matched.");
         }
 
         if (!settings.EnableRouteChanges)
         {
             logger.LogWarning(
-                "Dry-run: would remove {RouteCount} SIM default route(s): {Routes}",
+                "Dry-run: would remove {RouteCount} secondary default route(s): {Routes}",
                 matchedRoutes.Count,
                 DescribeRoutes(matchedRoutes));
 
@@ -62,7 +62,7 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
             MatchedRouteCount: matchedRoutes.Count,
             ChangedRouteCount: changedRouteCount,
             MatchedRoutes: matchedRoutes,
-            Message: $"Removed {changedRouteCount} SIM default route(s).");
+            Message: $"Removed {changedRouteCount} secondary default route(s).");
     }
 
     public async Task<RouteControlResult> ApplyDefaultRoutePrioritiesAsync(
@@ -98,7 +98,7 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
                 MatchedRouteCount: defaultRoutes.Count,
                 ChangedRouteCount: 0,
                 MatchedRoutes: defaultRoutes,
-                Message: "已紀錄優先順序。Dry-run：Windows route metric 未變更。");
+                Message: "Priority order saved. Dry-run only; Windows route metrics were not changed.");
         }
 
         using var process = CreateApplyPrioritiesProcess(defaultRoutes);
@@ -114,7 +114,7 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
                 MatchedRouteCount: defaultRoutes.Count,
                 ChangedRouteCount: 0,
                 MatchedRoutes: defaultRoutes,
-                Message: "已紀錄優先順序，但 Windows 權限確認已取消。");
+                Message: "Priority order saved, but Windows permission confirmation was canceled.");
         }
 
         await WaitForExitWithTimeoutAsync(process, cancellationToken);
@@ -130,20 +130,20 @@ public sealed class PowerShellRouteController(ILogger<PowerShellRouteController>
             MatchedRouteCount: defaultRoutes.Count,
             ChangedRouteCount: defaultRoutes.Count,
             MatchedRoutes: defaultRoutes,
-            Message: $"已紀錄並要求 Windows 套用 {defaultRoutes.Count} 條 route 優先度。");
+            Message: $"Priority order saved and Windows was asked to apply {defaultRoutes.Count} route priority change(s).");
     }
 
-    private static bool IsSimRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
+    private static bool IsSecondaryRoute(DefaultRouteInfo route, NetworkGuardSettings settings)
     {
-        if (settings.SimInterfaceIndex is { } simInterfaceIndex
-            && route.InterfaceIndex == simInterfaceIndex)
+        if (settings.SecondaryInterfaceIndex is { } secondaryInterfaceIndex
+            && route.InterfaceIndex == secondaryInterfaceIndex)
         {
             return true;
         }
 
         return string.Equals(
             route.InterfaceAlias,
-            settings.SimInterfaceAlias,
+            settings.SecondaryInterfaceAlias,
             StringComparison.OrdinalIgnoreCase);
     }
 

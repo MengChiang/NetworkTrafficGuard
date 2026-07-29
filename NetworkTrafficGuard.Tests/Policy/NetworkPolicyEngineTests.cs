@@ -22,11 +22,11 @@ public sealed class NetworkPolicyEngineTests
 
         result.RiskLevel.Should().Be(NetworkRiskLevel.Normal);
         result.ShouldNotify.Should().BeFalse();
-        result.ShouldBlockSimRoute.Should().BeFalse();
+        result.ShouldBlockSecondaryRoute.Should().BeFalse();
     }
 
     [Fact]
-    public void Evaluate_WhenSimRouteIsBestAndModeIsWarnOnly_ShouldNotifyWithoutBlocking()
+    public void Evaluate_WhenSecondaryRouteIsBestAndModeIsWarnOnly_ShouldNotifyWithoutBlocking()
     {
         var routes = new[]
         {
@@ -36,24 +36,24 @@ public sealed class NetworkPolicyEngineTests
 
         var result = _engine.Evaluate(routes, CreateSettings(mode: GuardMode.WarnOnly));
 
-        result.RiskLevel.Should().Be(NetworkRiskLevel.SimRouteActive);
+        result.RiskLevel.Should().Be(NetworkRiskLevel.SecondaryRouteActive);
         result.ShouldNotify.Should().BeTrue();
-        result.ShouldBlockSimRoute.Should().BeFalse();
+        result.ShouldBlockSecondaryRoute.Should().BeFalse();
     }
 
     [Fact]
-    public void Evaluate_WhenSimRouteIsBestAndModeIsBlock_ShouldNotifyAndRequestBlock()
+    public void Evaluate_WhenSecondaryRouteIsBestAndModeIsBlock_ShouldNotifyAndRequestBlock()
     {
         var routes = new[]
         {
             CreateRoute(interfaceIndex: 12, interfaceAlias: "Ethernet", routeMetric: 10, interfaceMetric: 10)
         };
 
-        var result = _engine.Evaluate(routes, CreateSettings(mode: GuardMode.BlockSimWhenWifiDown));
+        var result = _engine.Evaluate(routes, CreateSettings(mode: GuardMode.BlockSecondaryWhenWifiDown));
 
-        result.RiskLevel.Should().Be(NetworkRiskLevel.SimRouteActive);
+        result.RiskLevel.Should().Be(NetworkRiskLevel.SecondaryRouteActive);
         result.ShouldNotify.Should().BeTrue();
-        result.ShouldBlockSimRoute.Should().BeTrue();
+        result.ShouldBlockSecondaryRoute.Should().BeTrue();
     }
 
     [Fact]
@@ -65,26 +65,26 @@ public sealed class NetworkPolicyEngineTests
 
         result.RiskLevel.Should().Be(NetworkRiskLevel.Unknown);
         result.ShouldNotify.Should().BeTrue();
-        result.ShouldBlockSimRoute.Should().BeFalse();
+        result.ShouldBlockSecondaryRoute.Should().BeFalse();
     }
 
     [Fact]
-    public void Evaluate_WhenSimInterfaceIndexMatches_ShouldTreatRouteAsSimEvenIfAliasChanged()
+    public void Evaluate_WhenSecondaryInterfaceIndexMatches_ShouldTreatRouteAsSecondaryEvenIfAliasChanged()
     {
         var routes = new[]
         {
-            CreateRoute(interfaceIndex: 12, interfaceAlias: "SIM Router LAN", routeMetric: 10, interfaceMetric: 10)
+            CreateRoute(interfaceIndex: 12, interfaceAlias: "Secondary Ethernet", routeMetric: 10, interfaceMetric: 10)
         };
 
-        var settings = CreateSettings(simInterfaceAlias: "Ethernet", simInterfaceIndex: 12);
+        var settings = CreateSettings(secondaryInterfaceAlias: "Ethernet", secondaryInterfaceIndex: 12);
 
         var result = _engine.Evaluate(routes, settings);
 
-        result.RiskLevel.Should().Be(NetworkRiskLevel.SimRouteActive);
+        result.RiskLevel.Should().Be(NetworkRiskLevel.SecondaryRouteActive);
     }
 
     [Fact]
-    public void Evaluate_WhenCultureIsTraditionalChinese_ShouldReturnTraditionalChineseMessage()
+    public void Evaluate_WhenCultureIsTraditionalChinese_ShouldReturnEnglishSystemMessage()
     {
         var routes = new[]
         {
@@ -93,7 +93,7 @@ public sealed class NetworkPolicyEngineTests
 
         var result = _engine.Evaluate(routes, CreateSettings(cultureName: "zh-TW"));
 
-        result.Message.Should().Be("目前 Internet default route 指向 SIM 有線網路。");
+        result.Message.Should().Be("The current Internet default route points to the secondary network.");
     }
 
     private static DefaultRouteInfo CreateRoute(
@@ -114,15 +114,15 @@ public sealed class NetworkPolicyEngineTests
 
     private static NetworkGuardSettings CreateSettings(
         GuardMode mode = GuardMode.WarnOnly,
-        string simInterfaceAlias = "Ethernet",
-        int? simInterfaceIndex = null,
+        string secondaryInterfaceAlias = "Ethernet",
+        int? secondaryInterfaceIndex = null,
         string cultureName = "en-US")
     {
         return new NetworkGuardSettings
         {
             PrimaryWifiInterfaceAlias = "Wi-Fi",
-            SimInterfaceAlias = simInterfaceAlias,
-            SimInterfaceIndex = simInterfaceIndex,
+            SecondaryInterfaceAlias = secondaryInterfaceAlias,
+            SecondaryInterfaceIndex = secondaryInterfaceIndex,
             Mode = mode,
             CultureName = cultureName
         };
