@@ -186,6 +186,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string OptionsSummary =>
         $"Wi-Fi | Route {(Settings.EnableRouteChanges ? "enabled" : "simulation")} | Adapter {(Settings.EnableAdapterChanges ? "enabled" : "simulation")}";
 
+    public string EnableWifiMenuText => $"{Texts.EnableAction} {Texts.WifiLabel}";
+
+    public string DisableWifiMenuText => $"{Texts.DisableAction} {Texts.WifiLabel}";
+
     partial void OnIsBusyChanged(bool value)
     {
         RunCheckCommand.NotifyCanExecuteChanged();
@@ -702,6 +706,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             OnPropertyChanged(nameof(OptionsSummary));
             OnPropertyChanged(nameof(Texts));
             OnPropertyChanged(nameof(RouterLineLabel));
+            OnPropertyChanged(nameof(EnableWifiMenuText));
+            OnPropertyChanged(nameof(DisableWifiMenuText));
             UpdateAdapterControlStatus();
             RouteControlText = Texts.SettingsSaved;
             _ = RunCheckAsync();
