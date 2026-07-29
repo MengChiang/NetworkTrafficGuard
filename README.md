@@ -4,9 +4,9 @@ English is the default documentation language for this project.
 
 Localized versions:
 
-- [Traditional Chinese](windows-network-traffic-guard-plan.zh-TW.md)
-- [Simplified Chinese](windows-network-traffic-guard-plan.zh-CN.md)
-- [Japanese](windows-network-traffic-guard-plan.ja-JP.md)
+- [Traditional Chinese](README.zh-TW.md)
+- [Simplified Chinese](README.zh-CN.md)
+- [Japanese](README.ja-JP.md)
 
 ## 1. Purpose
 

@@ -4,9 +4,9 @@
 
 他の言語:
 
-- [English](windows-network-traffic-guard-plan.md)
-- [繁體中文](windows-network-traffic-guard-plan.zh-TW.md)
-- [简体中文](windows-network-traffic-guard-plan.zh-CN.md)
+- [English](README.md)
+- [繁體中文](README.zh-TW.md)
+- [简体中文](README.zh-CN.md)
 
 ## 1. 目的
 
