@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Network Traffic Guard" Height="680" Width="1040"
@@ -9,11 +10,17 @@
         Background="#F3F5F7">
     <Window.Resources>
         <Style x:Key="PanelBorder" TargetType="Border">
-            <Setter Property="Background" Value="White" />
+            <Setter Property="Background" Value="#FCFCFD" />
             <Setter Property="BorderBrush" Value="#D7DDE5" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="16" />
+        </Style>
+        <Style x:Key="CardIcon" TargetType="iconPacks:PackIconLucide">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Foreground" Value="#2563EB" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style x:Key="MutedText" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#64748B" />
@@ -27,6 +34,8 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="32" />
             <Setter Property="Padding" Value="12,0" />
+            <Setter Property="BorderBrush" Value="#C8D1DC" />
+            <Setter Property="Background" Value="#FFFFFF" />
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="MinWidth" Value="220" />
@@ -50,14 +59,33 @@
                             <TextBox Text="{Binding EditableGatewayAddress, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="Gateway 顯示名稱" Style="{StaticResource MutedText}" />
                             <TextBox Text="{Binding EditableGatewayDisplayName, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button Content="儲存設定" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left" />
+                            <Button Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <iconPacks:PackIconLucide Kind="Save" Width="16" Height="16" Margin="0,0,6,0" />
+                                    <TextBlock Text="儲存設定" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </MenuItem.Header>
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="Wi-Fi">
-                <MenuItem Header="Wi-Fi 開啟" Command="{Binding EnableWifiCommand}" />
-                <MenuItem Header="Wi-Fi 關閉" Command="{Binding DisableWifiCommand}" />
+                <MenuItem Command="{Binding EnableWifiCommand}">
+                    <MenuItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="Wifi" Width="16" Height="16" Margin="0,0,8,0" />
+                            <TextBlock Text="Wi-Fi 開啟" />
+                        </StackPanel>
+                    </MenuItem.Header>
+                </MenuItem>
+                <MenuItem Command="{Binding DisableWifiCommand}">
+                    <MenuItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="WifiOff" Width="16" Height="16" Margin="0,0,8,0" />
+                            <TextBlock Text="Wi-Fi 關閉" />
+                        </StackPanel>
+                    </MenuItem.Header>
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="目前為 dry-run；EnableAdapterChanges=true 才會真的改網卡。" IsEnabled="False" />
             </MenuItem>
@@ -72,7 +100,10 @@
 
             <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,14">
                 <StackPanel DockPanel.Dock="Left">
-                    <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal">
+                        <iconPacks:PackIconLucide Kind="Activity" Width="30" Height="30" Foreground="#2563EB" Margin="0,2,10,0" />
+                        <TextBlock Text="通信" FontSize="30" FontWeight="SemiBold" />
+                    </StackPanel>
                     <TextBlock Text="{Binding ActiveLineText}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
@@ -96,14 +127,27 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="Wi-Fi" Style="{StaticResource MutedText}" />
-                        <TextBlock Grid.Row="1" Text="{Binding WifiDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="Wifi" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
+                            <TextBlock Text="Wi-Fi" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Text="{Binding WifiDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,8,0,0" />
                         <StackPanel Grid.Row="2" Margin="0,10,0,0">
                             <TextBlock Text="{Binding WifiStatusText}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                             <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                <Button Content="開啟" Command="{Binding EnableWifiCommand}" Margin="0,0,8,0" />
-                                <Button Content="關閉" Command="{Binding DisableWifiCommand}" />
+                                <Button Command="{Binding EnableWifiCommand}" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconLucide Kind="Power" Width="15" Height="15" Margin="0,0,6,0" />
+                                        <TextBlock Text="開啟" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding DisableWifiCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconLucide Kind="PowerOff" Width="15" Height="15" Margin="0,0,6,0" />
+                                        <TextBlock Text="關閉" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </StackPanel>
                     </Grid>
@@ -116,8 +160,11 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="{Binding RouterLineLabel}" Style="{StaticResource MutedText}" />
-                        <TextBlock Grid.Row="1" Text="{Binding RouterDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,6,0,0" />
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="Router" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding RouterLineLabel}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Text="{Binding RouterDisplayName}" FontSize="24" FontWeight="SemiBold" Margin="0,8,0,0" />
                         <StackPanel Grid.Row="2" Margin="0,10,0,0">
                             <TextBlock Text="{Binding MobileDataStatusText}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding MobileDataDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
@@ -142,8 +189,18 @@
                         <DockPanel Margin="0,0,0,12">
                             <TextBlock DockPanel.Dock="Left" Text="使用優先順序" FontSize="17" FontWeight="SemiBold" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <Button Content="上移" Command="{Binding MoveRouteUpCommand}" Margin="0,0,8,0" />
-                                <Button Content="下移" Command="{Binding MoveRouteDownCommand}" />
+                                <Button Command="{Binding MoveRouteUpCommand}" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconLucide Kind="ArrowUp" Width="15" Height="15" Margin="0,0,6,0" />
+                                        <TextBlock Text="上移" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding MoveRouteDownCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconLucide Kind="ArrowDown" Width="15" Height="15" Margin="0,0,6,0" />
+                                        <TextBlock Text="下移" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </DockPanel>
                         <DataGrid Grid.Row="1"
@@ -169,7 +226,10 @@
 
                 <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
                     <StackPanel>
-                        <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <iconPacks:PackIconLucide Kind="Activity" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
+                            <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
                         <TextBlock Text="{Binding TrafficRateText}" />
                         <TextBlock Text="{Binding TrafficSparkline}" FontSize="28" FontFamily="Consolas" Margin="0,8,0,0" />
                         <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,18,0,0" />
