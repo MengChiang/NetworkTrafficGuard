@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="{Binding Texts.SettingsTitle}" Height="500" Width="760"
+        Title="{Binding Texts.SettingsTitle}" Height="440" Width="760"
         MinHeight="360" MinWidth="640"
         WindowStartupLocation="CenterOwner"
         Background="#F3F5F7">
@@ -19,21 +19,6 @@
             <TextBlock Text="{Binding Texts.SettingsTitle}" FontSize="22" FontWeight="SemiBold" />
             <TextBlock Text="{Binding Texts.SettingsDescription}"
                        Foreground="#64748B" Margin="0,4,0,0" />
-            <Grid Margin="0,12,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="240" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="{Binding Texts.LanguageLabel}"
-                           VerticalAlignment="Center"
-                           Margin="0,0,12,0" />
-                <ComboBox Grid.Column="1"
-                          ItemsSource="{Binding CultureOptions}"
-                          SelectedValue="{Binding SelectedCultureName, Mode=TwoWay}"
-                          SelectedValuePath="CultureName"
-                          DisplayMemberPath="DisplayName" />
-            </Grid>
         </StackPanel>
 
         <DataGrid Grid.Row="1"

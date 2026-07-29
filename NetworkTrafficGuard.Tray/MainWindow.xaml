@@ -67,9 +67,22 @@
                     <MenuItem.Header>
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconLucide Kind="Settings" Width="16" Height="16" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding Texts.Settings}" />
+                            <TextBlock Text="{Binding Texts.SettingsTitle}" />
                         </StackPanel>
                     </MenuItem.Header>
+                </MenuItem>
+                <Separator />
+                <MenuItem>
+                    <MenuItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconLucide Kind="Languages" Width="16" Height="16" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding Texts.LanguageLabel}" />
+                        </StackPanel>
+                    </MenuItem.Header>
+                    <MenuItem Header="繁體中文" Command="{Binding ChangeCultureCommand}" CommandParameter="zh-TW" />
+                    <MenuItem Header="简体中文" Command="{Binding ChangeCultureCommand}" CommandParameter="zh-CN" />
+                    <MenuItem Header="日本語" Command="{Binding ChangeCultureCommand}" CommandParameter="ja-JP" />
+                    <MenuItem Header="English" Command="{Binding ChangeCultureCommand}" CommandParameter="en-US" />
                 </MenuItem>
                 <Separator />
                 <MenuItem Command="{Binding EnableWifiCommand}">

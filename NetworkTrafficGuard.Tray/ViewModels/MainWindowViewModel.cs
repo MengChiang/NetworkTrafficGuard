@@ -134,6 +134,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _policyEngine = policyEngine;
         RunCheckCommand = new AsyncRelayCommand(RunCheckAsync, () => !IsBusy);
         OpenSettingsCommand = new RelayCommand(OpenSettingsWindow);
+        ChangeCultureCommand = new RelayCommand<string>(ChangeCulture);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         SaveSelectedNetworkNameCommand = new RelayCommand(SaveSelectedNetworkName, () => SelectedRoute is not null);
         SetWifiEnabledCommand = new AsyncRelayCommand<bool?>(SetWifiEnabledAsync, _ => !IsBusy);
@@ -151,6 +152,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IAsyncRelayCommand RunCheckCommand { get; }
 
     public IRelayCommand OpenSettingsCommand { get; }
+
+    public IRelayCommand<string> ChangeCultureCommand { get; }
 
     public IRelayCommand SaveSettingsCommand { get; }
 
@@ -703,19 +706,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (settingsWindow.ShowDialog() == true)
         {
             LoadEditableSettings();
-            OnPropertyChanged(nameof(SettingsSummary));
-            OnPropertyChanged(nameof(WifiDisplayName));
-            OnPropertyChanged(nameof(RouterDisplayName));
-            OnPropertyChanged(nameof(MobileDataCarrierName));
-            OnPropertyChanged(nameof(OptionsSummary));
-            OnPropertyChanged(nameof(Texts));
-            OnPropertyChanged(nameof(RouterLineLabel));
-            OnPropertyChanged(nameof(EnableWifiMenuText));
-            OnPropertyChanged(nameof(DisableWifiMenuText));
+            RefreshDisplayProperties();
             UpdateAdapterControlStatus();
             RouteControlText = Texts.SettingsSaved;
             _ = RunCheckAsync();
         }
+    }
+
+    private void ChangeCulture(string? cultureName)
+    {
+        if (string.IsNullOrWhiteSpace(cultureName)
+            || string.Equals(Settings.CultureName, cultureName, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        Settings.CultureName = cultureName;
+        TraySettingsLoader.Save(Settings);
+        RefreshDisplayProperties();
+        UpdateAdapterControlStatus();
+        RouteControlText = Texts.SettingsSaved;
+        _ = RunCheckAsync();
     }
 
     private void UpdateAdapterControlStatus()
@@ -738,11 +749,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         TraySettingsLoader.Save(Settings);
-        OnPropertyChanged(nameof(SettingsSummary));
-        OnPropertyChanged(nameof(WifiDisplayName));
-        OnPropertyChanged(nameof(RouterDisplayName));
-        OnPropertyChanged(nameof(MobileDataCarrierName));
-        OnPropertyChanged(nameof(OptionsSummary));
+        RefreshDisplayProperties();
         RouteControlText = Texts.SettingsSaved;
     }
 
@@ -778,6 +785,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SettingsSummary));
         OnPropertyChanged(nameof(WifiDisplayName));
         OnPropertyChanged(nameof(RouterDisplayName));
+    }
+
+    private void RefreshDisplayProperties()
+    {
+        OnPropertyChanged(nameof(SettingsSummary));
+        OnPropertyChanged(nameof(WifiDisplayName));
+        OnPropertyChanged(nameof(RouterDisplayName));
+        OnPropertyChanged(nameof(MobileDataCarrierName));
+        OnPropertyChanged(nameof(OptionsSummary));
+        OnPropertyChanged(nameof(Texts));
+        OnPropertyChanged(nameof(RouterLineLabel));
+        OnPropertyChanged(nameof(EnableWifiMenuText));
+        OnPropertyChanged(nameof(DisableWifiMenuText));
     }
 
     private void UpdateSelectedRouteDetails(RouteRowViewModel? route)
