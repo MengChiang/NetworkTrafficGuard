@@ -37,6 +37,13 @@
             <Setter Property="BorderBrush" Value="#C8D1DC" />
             <Setter Property="Background" Value="#FFFFFF" />
         </Style>
+        <Style TargetType="ToggleButton">
+            <Setter Property="MinWidth" Value="120" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="BorderBrush" Value="#C8D1DC" />
+            <Setter Property="Background" Value="#FFFFFF" />
+        </Style>
         <Style TargetType="TextBox">
             <Setter Property="MinWidth" Value="220" />
             <Setter Property="Margin" Value="0,4,0,10" />
@@ -55,10 +62,7 @@
                             <TextBox Text="{Binding EditableSimDisplayName, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="電信商 / 回線名稱" Style="{StaticResource MutedText}" />
                             <TextBox Text="{Binding EditableSimCarrierName, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="Gateway IP" Style="{StaticResource MutedText}" />
-                            <TextBox Text="{Binding EditableGatewayAddress, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="Gateway 顯示名稱" Style="{StaticResource MutedText}" />
-                            <TextBox Text="{Binding EditableGatewayDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Gateway 對應請選取左側網路後在右側編輯。" Style="{StaticResource MutedText}" Margin="0,4,0,10" />
                             <Button Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left">
                                 <StackPanel Orientation="Horizontal">
                                     <iconPacks:PackIconLucide Kind="Save" Width="16" Height="16" Margin="0,0,6,0" />
@@ -136,18 +140,14 @@
                             <TextBlock Text="{Binding WifiStatusText}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                             <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                <Button Command="{Binding EnableWifiCommand}" Margin="0,0,8,0">
+                                <ToggleButton IsChecked="{Binding IsWifiToggleChecked, Mode=TwoWay}"
+                                              Command="{Binding SetWifiEnabledCommand}"
+                                              CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}">
                                     <StackPanel Orientation="Horizontal">
-                                        <iconPacks:PackIconLucide Kind="Power" Width="15" Height="15" Margin="0,0,6,0" />
-                                        <TextBlock Text="開啟" />
+                                        <iconPacks:PackIconLucide Kind="Wifi" Width="15" Height="15" Margin="0,0,6,0" />
+                                        <TextBlock Text="Wi-Fi" />
                                     </StackPanel>
-                                </Button>
-                                <Button Command="{Binding DisableWifiCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <iconPacks:PackIconLucide Kind="PowerOff" Width="15" Height="15" Margin="0,0,6,0" />
-                                        <TextBlock Text="關閉" />
-                                    </StackPanel>
-                                </Button>
+                                </ToggleButton>
                             </StackPanel>
                         </StackPanel>
                     </Grid>
@@ -228,8 +228,21 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <iconPacks:PackIconLucide Kind="Activity" Style="{StaticResource CardIcon}" Margin="0,0,8,0" />
-                            <TextBlock Text="即時流量" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="選取網路" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
+                        <TextBlock Text="{Binding SelectedNetworkTitle}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding SelectedNetworkDetail}" Style="{StaticResource MutedText}" Margin="0,4,0,12" />
+
+                        <TextBlock Text="顯示名稱" Style="{StaticResource MutedText}" />
+                        <TextBox Text="{Binding EditableSelectedNetworkName, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Command="{Binding SaveSelectedNetworkNameCommand}" HorizontalAlignment="Left" Margin="0,0,0,18">
+                            <StackPanel Orientation="Horizontal">
+                                <iconPacks:PackIconLucide Kind="Save" Width="15" Height="15" Margin="0,0,6,0" />
+                                <TextBlock Text="儲存對應" />
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock Text="即時流量" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <TextBlock Text="{Binding TrafficRateText}" />
                         <TextBlock Text="{Binding TrafficSparkline}" FontSize="28" FontFamily="Consolas" Margin="0,8,0,0" />
                         <TextBlock Text="{Binding RouteControlText}" Style="{StaticResource MutedText}" Margin="0,18,0,0" />

@@ -23,10 +23,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly DispatcherTimer _trafficTimer = new();
     private readonly Queue<double> _trafficSamples = new();
-    private int? _activeInterfaceIndex;
+    private int? _bestInterfaceIndex;
+    private int? _monitoredInterfaceIndex;
     private long? _lastBytesReceived;
     private long? _lastBytesSent;
     private DateTimeOffset? _lastTrafficSampleAt;
+    private string? _selectedRouteKey;
 
     [ObservableProperty]
     private NetworkGuardSettings _settings;
@@ -86,6 +88,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _editableGatewayDisplayName = string.Empty;
 
     [ObservableProperty]
+    private string _selectedNetworkTitle = "選取左側網路";
+
+    [ObservableProperty]
+    private string _selectedNetworkDetail = "選取一列後，可查看它的流量並編輯顯示名稱。";
+
+    [ObservableProperty]
+    private string _editableSelectedNetworkName = string.Empty;
+
+    [ObservableProperty]
+    private bool _isWifiToggleChecked = true;
+
+    [ObservableProperty]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -115,6 +129,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _policyEngine = policyEngine;
         RunCheckCommand = new AsyncRelayCommand(RunCheckAsync, () => !IsBusy);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
+        SaveSelectedNetworkNameCommand = new RelayCommand(SaveSelectedNetworkName, () => SelectedRoute is not null);
+        SetWifiEnabledCommand = new AsyncRelayCommand<bool?>(SetWifiEnabledAsync, _ => !IsBusy);
         EnableWifiCommand = new AsyncRelayCommand(() => SetWifiEnabledAsync(enabled: true), () => !IsBusy);
         DisableWifiCommand = new AsyncRelayCommand(() => SetWifiEnabledAsync(enabled: false), () => !IsBusy);
         MoveRouteUpCommand = new RelayCommand(MoveSelectedRouteUp, () => SelectedRoute is not null);
@@ -127,6 +143,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IAsyncRelayCommand RunCheckCommand { get; }
 
     public IRelayCommand SaveSettingsCommand { get; }
+
+    public IRelayCommand SaveSelectedNetworkNameCommand { get; }
+
+    public IAsyncRelayCommand<bool?> SetWifiEnabledCommand { get; }
 
     public IAsyncRelayCommand EnableWifiCommand { get; }
 
@@ -155,6 +175,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnIsBusyChanged(bool value)
     {
         RunCheckCommand.NotifyCanExecuteChanged();
+        SetWifiEnabledCommand.NotifyCanExecuteChanged();
         EnableWifiCommand.NotifyCanExecuteChanged();
         DisableWifiCommand.NotifyCanExecuteChanged();
     }
@@ -163,6 +184,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         MoveRouteUpCommand.NotifyCanExecuteChanged();
         MoveRouteDownCommand.NotifyCanExecuteChanged();
+        SaveSelectedNetworkNameCommand.NotifyCanExecuteChanged();
+        UpdateSelectedRouteDetails(value);
+        SetTrafficMonitor(value?.InterfaceIndex ?? _bestInterfaceIndex);
     }
 
     private async Task RunCheckAsync()
@@ -179,16 +203,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var bestRoute = orderedRoutes.FirstOrDefault();
             var policyResult = _policyEngine.Evaluate(defaultRoutes, Settings);
 
+            var previousSelectedKey = SelectedRoute is null
+                ? null
+                : CreateRouteKey(SelectedRoute.InterfaceIndex, SelectedRoute.RawGateway);
+
             Routes = new ObservableCollection<RouteRowViewModel>(
                 orderedRoutes.Select(route => new RouteRowViewModel(route, route == bestRoute, Settings)));
+
+            SelectedRoute = RestoreSelection(previousSelectedKey)
+                ?? Routes.FirstOrDefault(route => route.Role == "主回線")
+                ?? Routes.FirstOrDefault();
 
             BestRouteText = bestRoute is null
                 ? "No default route found."
                 : $"{bestRoute.DestinationPrefix} via {FormatNextHop(bestRoute.NextHop)} on {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex} (total metric {bestRoute.TotalMetric})";
 
             UpdatePhoneSummary(orderedRoutes, bestRoute);
-            _activeInterfaceIndex = bestRoute?.InterfaceIndex;
-            ResetTrafficBaseline();
+            _bestInterfaceIndex = bestRoute?.InterfaceIndex;
+            SetTrafficMonitor(SelectedRoute?.InterfaceIndex ?? _bestInterfaceIndex);
 
             StatusText = policyResult.RiskLevel.ToString();
             StatusDetail = $"{policyResult.Message} Notify={policyResult.ShouldNotify}, BlockSim={policyResult.ShouldBlockSimRoute}";
@@ -232,6 +264,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             GatewayDisplayNames = new Dictionary<string, string>(source.GatewayDisplayNames, StringComparer.OrdinalIgnoreCase),
             Mode = source.Mode,
             EnableRouteChanges = false,
+            EnableAdapterChanges = false,
             CheckIntervalSeconds = source.CheckIntervalSeconds,
             CultureName = source.CultureName,
             AllowedWifiSsids = [.. source.AllowedWifiSsids]
@@ -248,6 +281,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
 
         WifiStatusText = isWifiActive ? "接続中" : wifiRoute is null ? "未接続" : "待機中";
+        IsWifiToggleChecked = wifiRoute is not null;
         WifiDetailText = wifiRoute is null
             ? $"{Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}"
             : $"{Settings.PrimaryWifiInterfaceAlias} #{wifiRoute.InterfaceIndex} ・ {FormatNextHop(wifiRoute.NextHop)}";
@@ -324,6 +358,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    private Task SetWifiEnabledAsync(bool? enabled)
+    {
+        return SetWifiEnabledAsync(enabled ?? false);
+    }
+
     private void MoveSelectedRouteUp()
     {
         MoveSelectedRoute(offset: -1);
@@ -385,6 +424,64 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RouteControlText = "設定已儲存。下一次更新會使用新的顯示名稱。";
     }
 
+    private void SaveSelectedNetworkName()
+    {
+        if (SelectedRoute is null || string.IsNullOrWhiteSpace(EditableSelectedNetworkName))
+        {
+            return;
+        }
+
+        var displayName = EditableSelectedNetworkName.Trim();
+
+        if (SelectedRoute.InterfaceIndex == Settings.PrimaryWifiInterfaceIndex
+            || string.Equals(SelectedRoute.InterfaceAlias, Settings.PrimaryWifiInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+        {
+            Settings.PrimaryWifiDisplayName = displayName;
+            EditableWifiDisplayName = displayName;
+        }
+        else if (SelectedRoute.InterfaceIndex == Settings.SimInterfaceIndex
+            || string.Equals(SelectedRoute.InterfaceAlias, Settings.SimInterfaceAlias, StringComparison.OrdinalIgnoreCase))
+        {
+            Settings.SimDisplayName = displayName;
+            EditableSimDisplayName = displayName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedRoute.RawGateway))
+        {
+            Settings.GatewayDisplayNames[SelectedRoute.RawGateway] = displayName;
+        }
+
+        TraySettingsLoader.Save(Settings);
+        RouteControlText = $"{SelectedRoute.RawGateway} 已對應為 {displayName}。";
+        OnPropertyChanged(nameof(SettingsSummary));
+        OnPropertyChanged(nameof(WifiDisplayName));
+        OnPropertyChanged(nameof(RouterDisplayName));
+    }
+
+    private void UpdateSelectedRouteDetails(RouteRowViewModel? route)
+    {
+        if (route is null)
+        {
+            _selectedRouteKey = null;
+            SelectedNetworkTitle = "選取左側網路";
+            SelectedNetworkDetail = "選取一列後，可查看它的流量並編輯顯示名稱。";
+            EditableSelectedNetworkName = string.Empty;
+            return;
+        }
+
+        var routeKey = CreateRouteKey(route.InterfaceIndex, route.RawGateway);
+        var isSameRoute = routeKey == _selectedRouteKey;
+        _selectedRouteKey = routeKey;
+
+        SelectedNetworkTitle = route.NetworkName;
+        SelectedNetworkDetail = $"{route.Gateway} ・ {route.Interface} ・ {route.AddressFamily}";
+
+        if (!isSameRoute)
+        {
+            EditableSelectedNetworkName = route.NetworkName.Split(" / ", StringSplitOptions.None)[0];
+        }
+    }
+
     private void StartTrafficTimer()
     {
         _trafficTimer.Interval = TimeSpan.FromSeconds(1);
@@ -408,17 +505,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void SampleTraffic()
     {
-        if (_activeInterfaceIndex is null)
+        if (_monitoredInterfaceIndex is null)
         {
             TrafficRateText = "即時流量: 等待路由檢查";
             return;
         }
 
-        var networkInterface = FindNetworkInterface(_activeInterfaceIndex.Value);
+        var networkInterface = FindNetworkInterface(_monitoredInterfaceIndex.Value);
 
         if (networkInterface is null)
         {
-            TrafficRateText = "即時流量: 找不到目前主回線網卡";
+            TrafficRateText = "即時流量: 找不到選取的網卡";
             return;
         }
 
@@ -444,8 +541,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _lastBytesSent = bytesSent;
         _lastTrafficSampleAt = now;
 
-        TrafficRateText = $"即時流量: ↓ {FormatBitsPerSecond(rxBps)} / ↑ {FormatBitsPerSecond(txBps)}";
+        TrafficRateText = $"監看 {networkInterface.Name}: ↓ {FormatBitsPerSecond(rxBps)} / ↑ {FormatBitsPerSecond(txBps)}";
         AddTrafficSample(totalBps);
+    }
+
+    private void SetTrafficMonitor(int? interfaceIndex)
+    {
+        if (_monitoredInterfaceIndex == interfaceIndex)
+        {
+            return;
+        }
+
+        _monitoredInterfaceIndex = interfaceIndex;
+        _trafficSamples.Clear();
+        TrafficSparkline = "▁▁▁▁▁▁▁▁▁▁";
+        ResetTrafficBaseline();
+    }
+
+    private RouteRowViewModel? RestoreSelection(string? routeKey)
+    {
+        return routeKey is null
+            ? null
+            : Routes.FirstOrDefault(route => CreateRouteKey(route.InterfaceIndex, route.RawGateway) == routeKey);
+    }
+
+    private static string CreateRouteKey(int interfaceIndex, string gateway)
+    {
+        return $"{interfaceIndex}|{gateway}";
     }
 
     private void ResetTrafficBaseline()

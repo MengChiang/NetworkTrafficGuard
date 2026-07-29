@@ -8,6 +8,12 @@ public sealed class RouteRowViewModel(
     bool isBestRoute,
     NetworkGuardSettings settings)
 {
+    public int InterfaceIndex { get; } = route.InterfaceIndex;
+
+    public string InterfaceAlias { get; } = route.InterfaceAlias;
+
+    public string RawGateway { get; } = route.NextHop;
+
     public string Role { get; } = isBestRoute ? "主回線" : "";
 
     public string NetworkName { get; } = FormatNetworkName(route, settings);
