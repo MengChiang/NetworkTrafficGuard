@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Network Traffic Guard icon">
+  <defs>
+    <linearGradient id="shield" x1="48" y1="24" x2="208" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="70" y1="48" x2="186" y2="206" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="#0F172A"/>
+  <path
+    d="M128 24 204 54v64c0 51-31 94-76 114-45-20-76-63-76-114V54l76-30Z"
+    fill="url(#shield)"/>
+  <path
+    d="M128 45 184 67v51c0 38-22 71-56 88-34-17-56-50-56-88V67l56-22Z"
+    fill="url(#inner)"/>
+
+  <path
+    d="M83 105c25-22 65-22 90 0"
+    fill="none"
+    stroke="#1D4ED8"
+    stroke-width="14"
+    stroke-linecap="round"/>
+  <path
+    d="M103 126c14-12 36-12 50 0"
+    fill="none"
+    stroke="#1D4ED8"
+    stroke-width="14"
+    stroke-linecap="round"/>
+  <circle cx="128" cy="149" r="11" fill="#1D4ED8"/>
+
+  <path
+    d="M76 174h31l11-25 19 45 13-20h30"
+    fill="none"
+    stroke="#0F766E"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+</svg>

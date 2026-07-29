@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         Title="Network Traffic Guard" Height="680" Width="1040"
         MinHeight="600" MinWidth="920"
+        Icon="Assets/network-traffic-guard.ico"
         Background="#F3F5F7">
     <Window.Resources>
         <Style x:Key="PanelBorder" TargetType="Border">

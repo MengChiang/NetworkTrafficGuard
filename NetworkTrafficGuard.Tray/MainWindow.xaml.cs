@@ -1,5 +1,6 @@
 using System.Windows;
 using System.ComponentModel;
+using System.IO;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 using NetworkTrafficGuard.Tray.ViewModels;
@@ -42,7 +43,7 @@ public partial class MainWindow : Window
 
         var notifyIcon = new Forms.NotifyIcon
         {
-            Icon = Drawing.SystemIcons.Application,
+            Icon = LoadTrayIcon(),
             ContextMenuStrip = contextMenu,
             Text = "Network Traffic Guard",
             Visible = true
@@ -50,6 +51,18 @@ public partial class MainWindow : Window
 
         notifyIcon.DoubleClick += (_, _) => RestoreFromTray();
         return notifyIcon;
+    }
+
+    private static Drawing.Icon LoadTrayIcon()
+    {
+        var iconPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Assets",
+            "network-traffic-guard.ico");
+
+        return File.Exists(iconPath)
+            ? new Drawing.Icon(iconPath)
+            : Drawing.SystemIcons.Application;
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
