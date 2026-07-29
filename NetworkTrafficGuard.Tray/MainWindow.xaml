@@ -135,6 +135,10 @@
                                 <TextBlock Grid.Column="0" Text="{Binding WifiStatusText}" FontWeight="SemiBold" Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding WifiDetailText}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
                             </Grid>
+                            <TextBlock Text="{Binding AdapterControlStatusText}"
+                                       Style="{StaticResource MutedText}"
+                                       Margin="0,3,0,0"
+                                       TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
                         <ToggleButton Grid.Column="1"

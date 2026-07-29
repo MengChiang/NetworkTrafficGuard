@@ -25,6 +25,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly DispatcherTimer _trafficTimer = new();
     private int? _bestInterfaceIndex;
     private string? _selectedRouteKey;
+    private bool _isSwitchingWifiAdapter;
     private readonly HashSet<string> _monitoredRouteKeys = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty]
@@ -208,6 +209,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var orderedRoutes = ApplySavedRoutePriorities(metricOrderedRoutes);
             var bestRoute = metricOrderedRoutes.FirstOrDefault();
             var policyResult = _policyEngine.Evaluate(defaultRoutes, Settings);
+            var wifiAdapterStatus = await GetWifiAdapterStatusAsync();
 
             var previousSelectedKey = SelectedRoute is null
                 ? null
@@ -241,7 +243,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ? "No default route found."
                 : $"{bestRoute.DestinationPrefix} via {FormatNextHop(bestRoute.NextHop)} on {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex} (total metric {bestRoute.TotalMetric})";
 
-            UpdatePhoneSummary(orderedRoutes, bestRoute);
+            UpdatePhoneSummary(orderedRoutes, bestRoute, wifiAdapterStatus);
             _bestInterfaceIndex = bestRoute?.InterfaceIndex;
             SyncTrafficMonitors();
 
@@ -298,18 +300,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void UpdatePhoneSummary(
         IReadOnlyList<DefaultRouteInfo> orderedRoutes,
-        DefaultRouteInfo? bestRoute)
+        DefaultRouteInfo? bestRoute,
+        AdapterStatusResult wifiAdapterStatus)
     {
         var wifiRoute = orderedRoutes.FirstOrDefault(IsWifiRoute);
         var mobileDataRoute = orderedRoutes.FirstOrDefault(IsMobileDataRoute);
         var isWifiActive = bestRoute is not null && IsWifiRoute(bestRoute);
         var isMobileDataActive = bestRoute is not null && IsMobileDataRoute(bestRoute);
 
-        WifiStatusText = isWifiActive ? "使用中" : wifiRoute is null ? "未接続" : "可用";
-        IsWifiToggleChecked = wifiRoute is not null;
-        WifiDetailText = wifiRoute is null
-            ? $"{Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(Settings.PrimaryWifiInterfaceIndex)}"
-            : $"{Settings.PrimaryWifiInterfaceAlias} #{wifiRoute.InterfaceIndex} ・ {FormatNextHop(wifiRoute.NextHop)}";
+        if (!_isSwitchingWifiAdapter)
+        {
+            WifiStatusText = FormatWifiStatusText(wifiAdapterStatus, isWifiActive);
+            IsWifiToggleChecked = wifiAdapterStatus.IsEnabled;
+        }
+
+        WifiDetailText = FormatWifiDetailText(wifiAdapterStatus, wifiRoute);
 
         MobileDataStatusText = isMobileDataActive ? "使用中" : mobileDataRoute is null ? "未接続" : "可用";
         MobileDataDetailText = mobileDataRoute is null
@@ -323,6 +328,71 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 : isWifiActive
                     ? $"現在の主回線: Wi-Fi ({Settings.PrimaryWifiDisplayName})"
                     : $"現在の主回線: {bestRoute.InterfaceAlias} #{bestRoute.InterfaceIndex}";
+    }
+
+    private async Task<AdapterStatusResult> GetWifiAdapterStatusAsync()
+    {
+        try
+        {
+            return await _adapterController.GetAdapterStatusAsync(
+                Settings.PrimaryWifiInterfaceAlias,
+                CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            return new AdapterStatusResult(
+                Exists: false,
+                Name: Settings.PrimaryWifiInterfaceAlias,
+                Status: "Unknown",
+                InterfaceIndex: Settings.PrimaryWifiInterfaceIndex,
+                Message: exception.Message);
+        }
+    }
+
+    private static string FormatWifiStatusText(AdapterStatusResult adapterStatus, bool isWifiActive)
+    {
+        if (!adapterStatus.Exists)
+        {
+            return "未確認";
+        }
+
+        if (isWifiActive)
+        {
+            return "使用中";
+        }
+
+        return adapterStatus.Status switch
+        {
+            "Up" => "已連線",
+            "Disconnected" => "未連線",
+            "Disabled" => "已關閉",
+            "Not Present" => "不存在",
+            _ => FormatAdapterStatus(adapterStatus.Status)
+        };
+    }
+
+    private string FormatWifiDetailText(AdapterStatusResult adapterStatus, DefaultRouteInfo? wifiRoute)
+    {
+        var adapterIndex = adapterStatus.InterfaceIndex ?? Settings.PrimaryWifiInterfaceIndex;
+        var adapterText = adapterStatus.Exists
+            ? $"{adapterStatus.Name} #{FormatIndex(adapterIndex)} ・ {FormatAdapterStatus(adapterStatus.Status)}"
+            : $"{Settings.PrimaryWifiInterfaceAlias} #{FormatIndex(adapterIndex)} ・ {adapterStatus.Message}";
+
+        return wifiRoute is null
+            ? adapterText
+            : $"{adapterText} ・ {FormatNextHop(wifiRoute.NextHop)}";
+    }
+
+    private static string FormatAdapterStatus(string status)
+    {
+        return status switch
+        {
+            "Up" => "Up",
+            "Disconnected" => "Disconnected",
+            "Disabled" => "Disabled",
+            "Not Present" => "Not Present",
+            _ => string.IsNullOrWhiteSpace(status) ? "Unknown" : status
+        };
     }
 
     private bool IsWifiRoute(DefaultRouteInfo route)
@@ -362,8 +432,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private async Task SetWifiEnabledAsync(bool enabled)
     {
         IsBusy = true;
+        _isSwitchingWifiAdapter = true;
         var requestedStateText = enabled ? "開啟" : "關閉";
         AdapterControlStatusText = $"{requestedStateText} Wi-Fi 中...";
+        WifiStatusText = "更新中";
 
         try
         {
@@ -377,16 +449,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
             AdapterControlStatusText = result.Message;
 
             await Task.Delay(TimeSpan.FromSeconds(2));
+            _isSwitchingWifiAdapter = false;
             await RunCheckAsync();
+
+            var refreshedStatus = await GetWifiAdapterStatusAsync();
+            var expectedStateMatched = enabled
+                ? refreshedStatus.IsEnabled
+                : string.Equals(refreshedStatus.Status, "Disabled", StringComparison.OrdinalIgnoreCase);
+
+            if (!result.IsDryRun && !expectedStateMatched)
+            {
+                AdapterControlStatusText =
+                    $"{requestedStateText} Wi-Fi 指令已送出，但目前網卡狀態仍是 {FormatAdapterStatus(refreshedStatus.Status)}。";
+            }
         }
         catch (Exception exception)
         {
             RouteControlText = exception.Message;
             AdapterControlStatusText = exception.Message;
+            _isSwitchingWifiAdapter = false;
             await RunCheckAsync();
         }
         finally
         {
+            _isSwitchingWifiAdapter = false;
             IsBusy = false;
         }
     }
